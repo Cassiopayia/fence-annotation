@@ -10,6 +10,7 @@ import {
   fetchLeaderboard,
   listSystems,
 } from "@/lib/zaun/public-api";
+import { currentUsernameOrOmit } from "@/lib/zaun/supabase-client";
 
 import { createFileRoute } from "@tanstack/react-router";
 import {
@@ -259,6 +260,7 @@ function Index() {
   const [welcomeStats, setWelcomeStats] = useState<WelcomeStats | null>(null);
   const [board, setBoard] = useState<BoardRow[] | null>(null);
   const [boardLoading, setBoardLoading] = useState(true);
+  const [username, setUsernameState] = useState<string | null>(() => currentUsernameOrOmit());
   const [connection, setConnection] = useState<ConnectionStatus>(() => getConnectionStatus());
   const { zoomLabel, service: imageryService } = useMapHudInfo();
   const selectedSys = systems.find((s) => s.id === selected);
@@ -1347,11 +1349,12 @@ function Index() {
         title="Leaderboard"
       >
         <Leaderboard
-          username={null}
+          username={username}
           saved={saved}
           verified={verifiedOwn}
           board={board}
           loading={boardLoading}
+          onUsernameChange={setUsernameState}
         />
       </Sheet>
 

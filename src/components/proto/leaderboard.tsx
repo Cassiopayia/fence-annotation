@@ -2,11 +2,14 @@ import { useEffect, useState } from "react";
 import { Trophy, ShieldCheck, Clock, UserRound } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
+import { authorLabel, setUsername } from "@/lib/zaun/supabase-client";
+import { GUEST_AUTHOR_LABEL, USERNAME_MAX, USERNAME_MIN } from "@/lib/zaun/username";
 
 export type BoardRow = { name: string; verified: number };
 
 /**
  * Pseudonymous board — guest / author labels only. Skeletons until the board loads.
+ * Optional display name is local (+ Supabase user_metadata when signed in).
  */
 export function Leaderboard({
   username,
@@ -14,34 +17,96 @@ export function Leaderboard({
   verified,
   board,
   loading = false,
+  onUsernameChange,
 }: {
   username: string | null;
   saved: number;
   verified: number;
   board?: BoardRow[] | null;
   loading?: boolean;
+  onUsernameChange?: (name: string | null) => void;
 }) {
   const [grow, setGrow] = useState(false);
+  const [draft, setDraft] = useState(username ?? "");
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [nameSaved, setNameSaved] = useState(false);
+
   useEffect(() => {
     const t = window.setTimeout(() => setGrow(true), 80);
     return () => window.clearTimeout(t);
   }, [board]);
 
+  useEffect(() => {
+    setDraft(username ?? "");
+  }, [username]);
+
   const rows = board ?? [];
   const listed = verified > 0;
+  const displayName = username || GUEST_AUTHOR_LABEL;
   const display = listed
-    ? [...rows, { name: username ?? "you", verified }].sort((a, b) => b.verified - a.verified)
+    ? [...rows, { name: displayName, verified }].sort((a, b) => b.verified - a.verified)
     : rows;
   const top = Math.max(1, display[0]?.verified ?? 1);
+
+  const applyName = () => {
+    setNameError(null);
+    setNameSaved(false);
+    try {
+      const next = setUsername(draft);
+      onUsernameChange?.(next);
+      setDraft(next ?? "");
+      setNameSaved(true);
+    } catch (err) {
+      setNameError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   return (
     <div className="space-y-4 pb-2">
       <div className="flex items-center gap-3 rounded-2xl bg-lime-soft px-4 py-3">
         <Trophy className="size-5 shrink-0 text-lime-foreground" />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          No accounts — annotations sync as guests when Supabase is configured. Only{" "}
-          <span className="font-semibold text-foreground">verified</span> fences count on the board.
+          No accounts — set an optional name so verified fences show as you on the board.
         </p>
+      </div>
+
+      <div className="space-y-2 rounded-2xl border border-border p-3">
+        <label htmlFor="display-name" className="block font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
+          Your name
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="display-name"
+            value={draft}
+            onChange={(e) => {
+              setDraft(e.target.value.toLowerCase());
+              setNameError(null);
+              setNameSaved(false);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") applyName();
+            }}
+            placeholder="guest"
+            autoComplete="username"
+            spellCheck={false}
+            maxLength={USERNAME_MAX}
+            className="h-11 min-w-0 flex-1 rounded-full border border-border bg-secondary px-4 text-sm font-semibold outline-none focus:border-lime"
+          />
+          <button
+            type="button"
+            onClick={applyName}
+            className="h-11 shrink-0 rounded-full bg-lime px-4 text-sm font-bold text-lime-foreground"
+          >
+            Save
+          </button>
+        </div>
+        <p className="font-mono text-[11px] text-muted-foreground">
+          {USERNAME_MIN}–{USERNAME_MAX} chars · a–z, 0–9, _
+          {nameSaved ? " · saved" : ""}
+        </p>
+        {nameError ? (
+          <p className="text-[12px] font-medium text-destructive">{nameError}</p>
+        ) : null}
       </div>
 
       {loading ? (
@@ -63,7 +128,7 @@ export function Leaderboard({
       ) : (
         <ol className="space-y-1.5">
           {display.map((r, i) => {
-            const mine = listed && r.name === (username ?? "you");
+            const mine = listed && r.name === displayName;
             return (
               <li
                 key={`${r.name}-${i}`}
@@ -105,7 +170,9 @@ export function Leaderboard({
             <UserRound className="size-4" />
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-[15px] font-semibold">Guest</span>
+            <span className="block truncate text-[15px] font-semibold">
+              {username || authorLabel() || GUEST_AUTHOR_LABEL}
+            </span>
             <span className="block font-mono text-xs text-muted-foreground">
               {saved} saved · {verified} verified
             </span>

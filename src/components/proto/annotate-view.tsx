@@ -209,8 +209,11 @@ export function AnnotateView({
                 key={r}
                 type="button"
                 onClick={() => {
+                  // Skip without persisting — only the lime Save button writes.
                   setReasonOpen(false);
-                  onSaved();
+                  DrawModule.clearAll();
+                  setDrawn(false);
+                  DrawModule.setActiveState("ANNOTATION");
                 }}
                 className="h-11 w-full rounded-full bg-secondary text-sm font-semibold text-secondary-foreground"
               >
@@ -262,7 +265,12 @@ export function AnnotateView({
                 <button
                   id="guided-exit-btn"
                   type="button"
-                  onClick={_onExit}
+                  onClick={() => {
+                    // Leave without writing — discard the in-progress outline.
+                    DrawModule.clearAll();
+                    setDrawn(false);
+                    _onExit();
+                  }}
                   aria-label="Leave annotation without saving"
                   className="glass grid size-11 place-items-center rounded-full border border-border text-destructive shadow-hud"
                 >

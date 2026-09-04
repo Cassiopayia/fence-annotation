@@ -168,16 +168,17 @@ export function initMapLayers(map, draw) {
       0.85
     ];
     // Fill layers only accept Polygon in $type filters; MultiPolygon still matches.
-    const legacyPolygonFilter = ['==', '$type', 'Polygon'];
+    // MapLibre $type "Polygon" also matches MultiPolygon.
+    const polygonFilter = ['==', '$type', 'Polygon'];
     map.addLayer({
       id: 'annotations-fill',
       type: 'fill',
       source: 'annotations',
-      filter: legacyPolygonFilter,
+      filter: polygonFilter,
       paint: {
         'fill-color': annotationColor,
-        'fill-opacity': 0.42
-      }
+        'fill-opacity': 0.35,
+      },
     });
     map.addLayer({
       id: 'annotations-line',
@@ -187,7 +188,7 @@ export function initMapLayers(map, draw) {
         'line-color': annotationColor,
         'line-width': annotationLineWidth,
         'line-opacity': annotationLineOpacity,
-      }
+      },
     });
     const annotationLayerIds = ['annotations-fill', 'annotations-line'];
     const bindAnnotationLayerEvents = (layerId) => {
@@ -227,15 +228,47 @@ export function initMapLayers(map, draw) {
     };
     annotationLayerIds.forEach(bindAnnotationLayerEvents);
 
-    // Systems layer
-    map.addSource('systems',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
-    map.addLayer({id:'systems-fill',type:'fill',source:'systems',paint:{'fill-color':['case',['boolean',['get','annotated'],false],'#18a85b','#f0883e'],'fill-opacity':0.42}});
-    map.addLayer({id:'systems-line',type:'line',source:'systems',paint:{'line-color':['case',['boolean',['get','annotated'],false],'#18a85b','#f0883e'],'line-width':1,'line-opacity':0.42}});
+    // Systems layer (Polygon + MultiPolygon footprints from the PV catalog)
+    map.addSource('systems', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+    });
+    const systemFillColor = [
+      'case',
+      ['any',
+        ['==', ['get', 'annotated'], true],
+        ['==', ['to-string', ['get', 'annotated']], 'true'],
+      ],
+      '#18a85b',
+      '#f0883e',
+    ];
+    map.addLayer({
+      id: 'systems-fill',
+      type: 'fill',
+      source: 'systems',
+      filter: ['==', '$type', 'Polygon'],
+      paint: {
+        'fill-color': systemFillColor,
+        'fill-opacity': 0.55,
+      },
+    });
+    map.addLayer({
+      id: 'systems-line',
+      type: 'line',
+      source: 'systems',
+      filter: ['==', '$type', 'Polygon'],
+      paint: {
+        'line-color': systemFillColor,
+        'line-width': 2,
+        'line-opacity': 0.95,
+      },
+    });
     // Invisible wider stroke so finger taps hit outlines (queryRenderedFeatures uses this).
     map.addLayer({
       id: 'systems-hit',
       type: 'line',
       source: 'systems',
+      filter: ['==', '$type', 'Polygon'],
       paint: {
         'line-color': '#000000',
         'line-opacity': 0,
@@ -310,26 +343,34 @@ export function initMapLayers(map, draw) {
     ensureMapOverlayStack(map);
   }
 
-  function setDistractionBlending(areaId, systemOpacity = 0.42) {
+  function setDistractionBlending(areaId, systemOpacity = 0.55) {
     if (!map.getLayer('systems-fill')) return;
     const opacity = Math.min(1, Math.max(0, systemOpacity));
-    const areaKey = areaId === null || areaId === undefined ? null : String(areaId);
+    const areaKey = areaId == null || String(areaId).trim() === '' ? null : String(areaId);
+
+    const defaultFillColor = [
+      'case',
+      ['any',
+        ['==', ['get', 'annotated'], true],
+        ['==', ['to-string', ['get', 'annotated']], 'true'],
+      ],
+      '#18a85b',
+      '#f0883e',
+    ];
 
     const resetLayers = () => {
-      const defaultFillColor = ['case', ['boolean', ['get', 'annotated'], false], '#18a85b', '#f0883e'];
-      const defaultOverlayOpacity = 0.42;
       map.setPaintProperty('systems-fill', 'fill-color', defaultFillColor);
-      map.setPaintProperty('systems-fill', 'fill-opacity', defaultOverlayOpacity);
+      map.setPaintProperty('systems-fill', 'fill-opacity', 0.55);
       if (map.getLayer('systems-line')) {
         map.setPaintProperty('systems-line', 'line-color', defaultFillColor);
-        map.setPaintProperty('systems-line', 'line-width', 1);
-        map.setPaintProperty('systems-line', 'line-opacity', defaultOverlayOpacity);
+        map.setPaintProperty('systems-line', 'line-width', 2);
+        map.setPaintProperty('systems-line', 'line-opacity', 0.95);
       }
       if (map.getLayer('annotations-line')) {
-        map.setPaintProperty('annotations-line', 'line-opacity', defaultOverlayOpacity);
+        map.setPaintProperty('annotations-line', 'line-opacity', 0.85);
       }
       if (map.getLayer('annotations-fill')) {
-        map.setPaintProperty('annotations-fill', 'fill-opacity', defaultOverlayOpacity);
+        map.setPaintProperty('annotations-fill', 'fill-opacity', 0.35);
       }
     };
 
@@ -338,37 +379,51 @@ export function initMapLayers(map, draw) {
       return;
     }
 
-    const isActiveSystem = ['==', ['to-string', ['coalesce', ['get', 'area_id'], ['get', 'footprint_id'], '']], areaKey];
-    const inactiveFillColor = ['case', ['boolean', ['get', 'annotated'], false], '#18a85b', '#f0883e'];
+    const isActiveSystem = [
+      '==',
+      ['to-string', ['coalesce', ['get', 'area_id'], ['get', 'footprint_id'], '']],
+      areaKey,
+    ];
 
-    // Active guided system is blue; everything else keeps annotated/orange styling.
+    // Active guided system is blue; keep inactive PV readable (not nearly invisible).
+    const inactiveOpacity = Math.max(opacity, 0.28);
     map.setPaintProperty('systems-fill', 'fill-color', [
       'case',
       isActiveSystem,
       '#58a6ff',
-      inactiveFillColor
+      defaultFillColor,
     ]);
-    map.setPaintProperty('systems-fill', 'fill-opacity', opacity);
+    map.setPaintProperty('systems-fill', 'fill-opacity', [
+      'case',
+      isActiveSystem,
+      Math.max(opacity, 0.55),
+      inactiveOpacity,
+    ]);
     if (map.getLayer('systems-line')) {
       map.setPaintProperty('systems-line', 'line-color', [
         'case',
         isActiveSystem,
         '#58a6ff',
-        inactiveFillColor
+        defaultFillColor,
       ]);
       map.setPaintProperty('systems-line', 'line-width', [
         'case',
         isActiveSystem,
-        2.5,
-        1
+        3,
+        2,
       ]);
-      map.setPaintProperty('systems-line', 'line-opacity', opacity);
+      map.setPaintProperty('systems-line', 'line-opacity', [
+        'case',
+        isActiveSystem,
+        1,
+        Math.max(opacity, 0.55),
+      ]);
     }
     if (map.getLayer('annotations-line')) {
-      map.setPaintProperty('annotations-line', 'line-opacity', opacity);
+      map.setPaintProperty('annotations-line', 'line-opacity', 0.85);
     }
     if (map.getLayer('annotations-fill')) {
-      map.setPaintProperty('annotations-fill', 'fill-opacity', opacity * 0.14);
+      map.setPaintProperty('annotations-fill', 'fill-opacity', 0.35);
     }
   }
 
@@ -547,6 +602,34 @@ export function isExtraSampleFenceProps(props) {
   return explicitlyUnlinked || !hasPvLink;
 }
 
+/** True when a LineString ring is closed (first ≈ last, ≥3 segments). */
+function isClosedLineString(geometry) {
+  if (!geometry || geometry.type !== 'LineString') return false;
+  const coords = geometry.coordinates || [];
+  if (coords.length < 4) return false;
+  const a = coords[0];
+  const b = coords[coords.length - 1];
+  if (!Array.isArray(a) || !Array.isArray(b)) return false;
+  return Math.abs(Number(a[0]) - Number(b[0])) < 1e-9
+    && Math.abs(Number(a[1]) - Number(b[1])) < 1e-9;
+}
+
+/** Paint closed fence rings as polygons so fill layers can render them. */
+function geometryForPaint(geometry) {
+  if (!geometry) return geometry;
+  if (geometry.type === 'Polygon' || geometry.type === 'MultiPolygon') return geometry;
+  if (geometry.type === 'LineString' && isClosedLineString(geometry)) {
+    const ring = geometry.coordinates.slice();
+    const first = ring[0];
+    const last = ring[ring.length - 1];
+    if (first && last && (first[0] !== last[0] || first[1] !== last[1])) {
+      ring.push([first[0], first[1]]);
+    }
+    return { type: 'Polygon', coordinates: [ring] };
+  }
+  return geometry;
+}
+
 /** Stamp string `extra` for reliable MapLibre paint matching. */
 function normalizeAnnotationsForPaint(data) {
   const featuresIn = Array.isArray(data?.features)
@@ -572,7 +655,11 @@ function normalizeAnnotationsForPaint(data) {
       }
       // MapLibre paint matches strings more reliably than booleans on GeoJSON props.
       props.is_public = props.review_status === 'verified' ? 'true' : 'false';
-      return { ...feature, properties: props };
+      return {
+        ...feature,
+        geometry: geometryForPaint(feature.geometry),
+        properties: props,
+      };
     });
   return {
     type: 'FeatureCollection',

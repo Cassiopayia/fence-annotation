@@ -82,6 +82,20 @@ function publicGeometry(geometry) {
   if (!geometry || !geometry.type || geometry.coordinates == null) {
     throw new Error('A drawn geometry is required');
   }
+  // Persist closed rings as Polygon so fills render for everyone (incl. other clients).
+  if (geometry.type === 'LineString') {
+    const coords = geometry.coordinates || [];
+    if (coords.length >= 4) {
+      const a = coords[0];
+      const b = coords[coords.length - 1];
+      const closed = Array.isArray(a) && Array.isArray(b)
+        && Math.abs(Number(a[0]) - Number(b[0])) < 1e-9
+        && Math.abs(Number(a[1]) - Number(b[1])) < 1e-9;
+      if (closed) {
+        return { type: 'Polygon', coordinates: [coords] };
+      }
+    }
+  }
   return { type: geometry.type, coordinates: geometry.coordinates };
 }
 

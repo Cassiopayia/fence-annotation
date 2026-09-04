@@ -282,9 +282,9 @@ export function MapCanvas({
 
   useEffect(() => {
     if (focus && selected) {
-      MapModule.setDistractionBlending?.(selected, 0.12);
+      MapModule.setDistractionBlending?.(selected, 0.32);
     } else {
-      MapModule.setDistractionBlending?.("", 0.42);
+      MapModule.setDistractionBlending?.(null, 0.55);
     }
   }, [focus, selected]);
 

@@ -258,7 +258,8 @@ export const DrawModule = (() => {
       try {
         const ids = draw.add(feat);
         const id = Array.isArray(ids) ? ids[0] : ids;
-        // Match MapboxDraw's create event so guided auto-save can run.
+        // Match MapboxDraw's create event so UI can mark the outline ready.
+        // Persistence only happens when the user taps Save — never here.
         map.fire('draw.create', {
           features: [{ ...feat, id }],
         });

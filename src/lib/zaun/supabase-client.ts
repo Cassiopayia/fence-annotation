@@ -112,6 +112,28 @@ export function authorLabel(): string {
   return currentUsernameOrOmit() || GUEST_AUTHOR_LABEL;
 }
 
+/**
+ * Optional display name for the leaderboard / author_label.
+ * Empty clears the name (back to Guest). Throws if the value is non-empty but invalid.
+ */
+export function setUsername(raw: string | null | undefined): string | null {
+  const p = getAuthProfile();
+  const trimmed = String(raw ?? "").trim();
+  if (!trimmed) {
+    p.username = null;
+    persist(p);
+    return null;
+  }
+  const name = optionalUsername(trimmed);
+  p.username = name;
+  persist(p);
+  const sb = getSupabase();
+  if (sb) {
+    void sb.auth.updateUser({ data: { username: name } }).catch(() => {});
+  }
+  return name;
+}
+
 /** True when a local guest id or Supabase session exists. Login UI is not used. */
 export function isSignedIn(): boolean {
   const p = getAuthProfile();
