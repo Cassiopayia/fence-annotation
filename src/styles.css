@@ -1,0 +1,619 @@
+@import "tailwindcss" source(none);
+@source "../src";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * fency mobile design system.
+ * Field-tool aesthetic: high contrast dark-on-light for sunlight,
+ * lime accent for "ready / connected", map is the hero.
+ * 8pt spacing grid. All colors in oklch.
+ */
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-lime: var(--lime);
+  --color-lime-soft: var(--lime-soft);
+  --color-lime-foreground: var(--lime-foreground);
+  --color-fence: var(--fence);
+  --color-pv: var(--pv);
+  --color-warn: var(--warn);
+  --color-online: var(--online);
+  --color-st-open: var(--st-open);
+  --color-st-mine: var(--st-mine);
+  --color-st-awaiting: var(--st-awaiting);
+  --color-st-verified: var(--st-verified);
+  --color-st-flagged: var(--st-flagged);
+  --color-st-excluded: var(--st-excluded);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --font-display: "Archivo", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+  --shadow-sheet: 0 -8px 40px -12px oklch(0.2 0.02 150 / 0.35);
+  --shadow-hud: 0 6px 20px -6px oklch(0.2 0.02 150 / 0.45);
+}
+
+:root {
+  --radius: 0.875rem;
+  --background: oklch(0.985 0.004 120);
+  --foreground: oklch(0.19 0.015 150);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.19 0.015 150);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.19 0.015 150);
+  --primary: oklch(0.24 0.02 150);
+  --primary-foreground: oklch(0.985 0.004 120);
+  --secondary: oklch(0.95 0.008 130);
+  --secondary-foreground: oklch(0.24 0.02 150);
+  --muted: oklch(0.955 0.006 130);
+  --muted-foreground: oklch(0.5 0.015 150);
+  --accent: oklch(0.94 0.03 130);
+  --accent-foreground: oklch(0.24 0.02 150);
+  --lime: oklch(0.87 0.2 125);
+  --lime-soft: oklch(0.94 0.11 126);
+  --lime-foreground: oklch(0.24 0.06 140);
+  --fence: oklch(0.72 0.19 45);
+  --pv: oklch(0.68 0.16 250);
+  --warn: oklch(0.8 0.16 85);
+  --online: oklch(0.72 0.18 145);
+  --st-open: oklch(0.62 0.14 250);
+  --st-mine: oklch(0.72 0.17 85);
+  --st-awaiting: oklch(0.62 0.12 300);
+  --st-verified: oklch(0.52 0.13 165);
+  --st-flagged: oklch(0.58 0.22 25);
+  --st-excluded: oklch(0.55 0.01 150);
+  --destructive: oklch(0.58 0.22 25);
+  --destructive-foreground: oklch(0.985 0.004 120);
+  --border: oklch(0.9 0.008 140);
+  --input: oklch(0.9 0.008 140);
+  --ring: oklch(0.7 0.12 130);
+  --chart-1: oklch(0.87 0.2 125);
+  --chart-2: oklch(0.68 0.16 250);
+  --chart-3: oklch(0.72 0.19 45);
+  --chart-4: oklch(0.8 0.16 85);
+  --chart-5: oklch(0.5 0.015 150);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.19 0.015 150);
+  --sidebar-primary: oklch(0.24 0.02 150);
+  --sidebar-primary-foreground: oklch(0.985 0.004 120);
+  --sidebar-accent: oklch(0.94 0.03 130);
+  --sidebar-accent-foreground: oklch(0.24 0.02 150);
+  --sidebar-border: oklch(0.9 0.008 140);
+  --sidebar-ring: oklch(0.7 0.12 130);
+}
+
+.dark {
+  --background: oklch(0.16 0.012 150);
+  --foreground: oklch(0.97 0.005 120);
+  --card: oklch(0.22 0.014 150);
+  --card-foreground: oklch(0.97 0.005 120);
+  --popover: oklch(0.22 0.014 150);
+  --popover-foreground: oklch(0.97 0.005 120);
+  --primary: oklch(0.97 0.005 120);
+  --primary-foreground: oklch(0.2 0.014 150);
+  --secondary: oklch(0.27 0.016 150);
+  --secondary-foreground: oklch(0.97 0.005 120);
+  --muted: oklch(0.27 0.016 150);
+  --muted-foreground: oklch(0.72 0.015 150);
+  --accent: oklch(0.3 0.03 140);
+  --accent-foreground: oklch(0.97 0.005 120);
+  --lime: oklch(0.85 0.2 125);
+  --lime-soft: oklch(0.4 0.09 130);
+  --lime-foreground: oklch(0.16 0.03 140);
+  --online: oklch(0.78 0.19 145);
+  --st-open: oklch(0.74 0.14 250);
+  --st-mine: oklch(0.83 0.16 85);
+  --st-awaiting: oklch(0.74 0.12 300);
+  --st-verified: oklch(0.72 0.14 165);
+  --st-flagged: oklch(0.68 0.2 25);
+  --st-excluded: oklch(0.7 0.01 150);
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 16%);
+  --sidebar: oklch(0.22 0.014 150);
+  --sidebar-foreground: oklch(0.97 0.005 120);
+  --sidebar-border: oklch(1 0 0 / 12%);
+}
+
+/*
+ * Colour schemes. A palette class on <html> overrides the token values;
+ * every component keeps using the same semantic tokens.
+ */
+
+/* Midnight — space indigo / vivid royal / honeydew */
+.palette-midnight {
+  --background: #f3f6f4;
+  --foreground: #171738;
+  --card: #ffffff;
+  --card-foreground: #171738;
+  --popover: #ffffff;
+  --popover-foreground: #171738;
+  --primary: #2e1760;
+  --primary-foreground: #dff3e4;
+  --secondary: #e6e9f4;
+  --secondary-foreground: #2e1760;
+  --muted: #e6e9f4;
+  --muted-foreground: #55598a;
+  --accent: #dde2f2;
+  --accent-foreground: #2e1760;
+  --lime: #3423a6;
+  --lime-soft: #dff3e4;
+  --lime-foreground: #ffffff;
+  --fence: #7180b9;
+  --pv: #3423a6;
+  --border: #d5dbec;
+  --input: #d5dbec;
+  --ring: #7180b9;
+}
+.dark.palette-midnight {
+  --background: #10102a;
+  --foreground: #dff3e4;
+  --card: #171738;
+  --card-foreground: #dff3e4;
+  --popover: #171738;
+  --popover-foreground: #dff3e4;
+  --primary: #dff3e4;
+  --primary-foreground: #171738;
+  --secondary: #241f4d;
+  --secondary-foreground: #dff3e4;
+  --muted: #241f4d;
+  --muted-foreground: #a3adda;
+  --accent: #2e1760;
+  --accent-foreground: #dff3e4;
+  --lime: #7180b9;
+  --lime-soft: #2e1760;
+  --lime-foreground: #10102a;
+  --border: #dff3e4;
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+}
+
+/* Coral — pearl beige / strawberry / dusk blue */
+.palette-coral {
+  --background: #fcecc9;
+  --foreground: #24304d;
+  --card: #fffaf0;
+  --card-foreground: #24304d;
+  --popover: #fffaf0;
+  --popover-foreground: #24304d;
+  --primary: #445e93;
+  --primary-foreground: #fcecc9;
+  --secondary: #f7dfc4;
+  --secondary-foreground: #445e93;
+  --muted: #f7dfc4;
+  --muted-foreground: #6c7a9c;
+  --accent: #fcb0b3;
+  --accent-foreground: #24304d;
+  --lime: #f93943;
+  --lime-soft: #fcb0b3;
+  --lime-foreground: #fffaf0;
+  --fence: #f93943;
+  --pv: #7eb2dd;
+  --destructive: #d0202c;
+  --border: #ecd6b6;
+  --input: #ecd6b6;
+  --ring: #7eb2dd;
+}
+.dark.palette-coral {
+  --background: #1b2437;
+  --foreground: #fcecc9;
+  --card: #24304d;
+  --card-foreground: #fcecc9;
+  --popover: #24304d;
+  --popover-foreground: #fcecc9;
+  --primary: #fcecc9;
+  --primary-foreground: #24304d;
+  --secondary: #33415f;
+  --secondary-foreground: #fcecc9;
+  --muted: #33415f;
+  --muted-foreground: #b6c4e0;
+  --accent: #445e93;
+  --accent-foreground: #fcecc9;
+  --lime: #f93943;
+  --lime-soft: #445e93;
+  --lime-foreground: #fffaf0;
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+}
+
+/* Harvest — charcoal blue / pumpkin / seagrass */
+.palette-harvest {
+  --background: #f7f4ec;
+  --foreground: #233d4d;
+  --card: #ffffff;
+  --card-foreground: #233d4d;
+  --popover: #ffffff;
+  --popover-foreground: #233d4d;
+  --primary: #233d4d;
+  --primary-foreground: #f7f4ec;
+  --secondary: #eae6da;
+  --secondary-foreground: #233d4d;
+  --muted: #eae6da;
+  --muted-foreground: #5d6f78;
+  --accent: #a1c181;
+  --accent-foreground: #233d4d;
+  --lime: #fe7f2d;
+  --lime-soft: #fcca46;
+  --lime-foreground: #233d4d;
+  --fence: #fe7f2d;
+  --pv: #619b8a;
+  --warn: #fcca46;
+  --border: #ded8ca;
+  --input: #ded8ca;
+  --ring: #619b8a;
+}
+.dark.palette-harvest {
+  --background: #15242e;
+  --foreground: #f7f4ec;
+  --card: #233d4d;
+  --card-foreground: #f7f4ec;
+  --popover: #233d4d;
+  --popover-foreground: #f7f4ec;
+  --primary: #f7f4ec;
+  --primary-foreground: #233d4d;
+  --secondary: #2d4c5f;
+  --secondary-foreground: #f7f4ec;
+  --muted: #2d4c5f;
+  --muted-foreground: #b2c6ce;
+  --accent: #619b8a;
+  --accent-foreground: #f7f4ec;
+  --lime: #fe7f2d;
+  --lime-soft: #619b8a;
+  --lime-foreground: #15242e;
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+}
+
+/* Voltage — indigo / berry / gold */
+.palette-voltage {
+  --background: #f1e9da;
+  --foreground: #2e294e;
+  --card: #fdfaf3;
+  --card-foreground: #2e294e;
+  --popover: #fdfaf3;
+  --popover-foreground: #2e294e;
+  --primary: #541388;
+  --primary-foreground: #f1e9da;
+  --secondary: #e5dcc9;
+  --secondary-foreground: #541388;
+  --muted: #e5dcc9;
+  --muted-foreground: #6a648c;
+  --accent: #e3d3f0;
+  --accent-foreground: #541388;
+  --lime: #ffd400;
+  --lime-soft: #ffeb99;
+  --lime-foreground: #2e294e;
+  --fence: #d90368;
+  --pv: #541388;
+  --destructive: #d90368;
+  --border: #d8cdb7;
+  --input: #d8cdb7;
+  --ring: #541388;
+}
+.dark.palette-voltage {
+  --background: #1c1930;
+  --foreground: #f1e9da;
+  --card: #2e294e;
+  --card-foreground: #f1e9da;
+  --popover: #2e294e;
+  --popover-foreground: #f1e9da;
+  --primary: #f1e9da;
+  --primary-foreground: #2e294e;
+  --secondary: #3c3565;
+  --secondary-foreground: #f1e9da;
+  --muted: #3c3565;
+  --muted-foreground: #b9b2d6;
+  --accent: #541388;
+  --accent-foreground: #f1e9da;
+  --lime: #ffd400;
+  --lime-soft: #541388;
+  --lime-foreground: #1c1930;
+  --destructive: #d90368;
+  --border: oklch(1 0 0 / 14%);
+  --input: oklch(1 0 0 / 18%);
+}
+
+@layer base {
+  * {
+    border-color: var(--color-border);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+    height: 100dvh;
+    width: 100%;
+    margin: 0;
+    overscroll-behavior: none;
+  }
+
+  body {
+    /* Solid chrome — never let primary green bleed under the map / home indicator */
+    background-color: var(--color-card);
+    color: var(--color-foreground);
+    font-family: var(--font-sans);
+    -webkit-tap-highlight-color: transparent;
+    overflow: hidden;
+  }
+
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Safe-area utilities (viewport-fit=cover, PWA standalone first) */
+@utility pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+@utility pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility mt-safe {
+  margin-top: env(safe-area-inset-top, 0px);
+}
+@utility mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}
+@utility h-screen-d {
+  height: 100dvh;
+}
+
+/* Frosted chrome used by HUD, tab bar and sheets — solid card, no blur/shadow (blur smears map tiles). */
+@utility glass {
+  background-color: var(--card);
+  backdrop-filter: none;
+}
+
+@utility tap-44 {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Save-tick invitation: wiggles once the fence polyline is closed */
+@keyframes tick-wiggle {
+  0%,
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+  20% {
+    transform: rotate(-9deg) scale(1.06);
+  }
+  45% {
+    transform: rotate(9deg) scale(1.06);
+  }
+  70% {
+    transform: rotate(-5deg) scale(1.03);
+  }
+}
+@utility animate-tick-wiggle {
+  animation: tick-wiggle 1.4s ease-in-out infinite;
+}
+
+/* Save confirmation: tick flies into the contribution counter */
+@keyframes tick-commit {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: translateY(-42vh) scale(0.3);
+    opacity: 0;
+  }
+}
+@utility animate-tick-commit {
+  animation: tick-commit 620ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes count-pop {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.35);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+@utility animate-count-pop {
+  animation: count-pop 520ms ease-out;
+}
+
+
+/* Guided tour: pulsing spotlight ring, travelling arrow dashes, flashing target */
+@keyframes tour-ring {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 color-mix(in oklab, var(--lime) 55%, transparent);
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 10px color-mix(in oklab, var(--lime) 0%, transparent);
+    opacity: 0.7;
+  }
+}
+@utility animate-tour-ring {
+  animation: tour-ring 1.5s ease-out infinite;
+}
+
+@keyframes tour-dash {
+  to {
+    stroke-dashoffset: -28;
+  }
+}
+@utility animate-tour-dash {
+  animation: tour-dash 0.9s linear infinite;
+}
+
+@keyframes tour-flash {
+  0%,
+  100% {
+    filter: none;
+  }
+  50% {
+    filter: brightness(1.22) drop-shadow(0 0 12px color-mix(in oklab, var(--lime) 70%, transparent));
+  }
+}
+.tour-flash {
+  /* filter only — never touch position/z-index/transform: fixed bars (tab bar, action bar)
+     would be re-anchored or jitter, and a moving target cannot be tapped */
+  animation: tour-flash 1.5s ease-in-out infinite;
+}
+
+/* Keep any residual MapLibre chrome clear of the Lovable action bar */
+#map .maplibregl-ctrl-top-right {
+  /* Sit under the right HUD stack (up to 5 × 44px circles + gaps). */
+  top: calc(max(6px, env(safe-area-inset-top, 0px)) + 56px + 252px + 12px);
+  right: 16px;
+  z-index: 45;
+  pointer-events: auto;
+}
+/* Attribution: same footprint as HudButton (size-11 circle), collapsed by default. */
+#map .maplibregl-ctrl-bottom-left {
+  display: none;
+}
+/* Attribution (i) only while browsing the map — same chrome window as the tool rail. */
+#map[data-attrib="off"] .maplibregl-ctrl-attrib {
+  display: none !important;
+}
+#map .maplibregl-ctrl-attrib {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+#map .maplibregl-ctrl-attrib.maplibregl-compact .maplibregl-ctrl-attrib-inner,
+#map .maplibregl-ctrl-attrib:not([open]) .maplibregl-ctrl-attrib-inner {
+  display: none;
+}
+#map .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner,
+#map .maplibregl-ctrl-attrib[open] .maplibregl-ctrl-attrib-inner {
+  display: block;
+  position: absolute;
+  right: 0;
+  left: auto;
+  top: calc(100% + 8px);
+  bottom: auto;
+  width: max-content;
+  max-width: min(72vw, 280px);
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background-color: var(--card);
+  backdrop-filter: none;
+  box-shadow: none;
+  color: var(--foreground);
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  white-space: normal;
+}
+#map .maplibregl-ctrl-attrib.maplibregl-compact-show .maplibregl-ctrl-attrib-inner a,
+#map .maplibregl-ctrl-attrib[open] .maplibregl-ctrl-attrib-inner a {
+  color: var(--foreground);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+#map .maplibregl-ctrl-attrib-button,
+#map .maplibregl-ctrl-attrib .maplibregl-ctrl-attrib-button {
+  position: relative !important;
+  display: grid !important;
+  place-items: center;
+  width: 44px !important;
+  height: 44px !important;
+  min-width: 44px;
+  min-height: 44px;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 9999px !important;
+  background-color: var(--card) !important;
+  background-image: none !important;
+  backdrop-filter: none;
+  box-shadow: none !important;
+  cursor: pointer;
+  appearance: none;
+  list-style: none;
+}
+#map .maplibregl-ctrl-attrib-button::-webkit-details-marker {
+  display: none;
+}
+#map .maplibregl-ctrl-attrib-button::after {
+  content: "i";
+  font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  font-style: italic;
+  line-height: 1;
+  color: var(--foreground);
+  text-transform: lowercase;
+}
+/* Hide MapLibre's default info glyph (background-image / empty summary). */
+#map .maplibregl-ctrl-attrib-button .maplibregl-ctrl-icon {
+  display: none;
+}
+#map .maplibregl-canvas {
+  cursor: crosshair;
+}
+
+/* Edge-to-edge map — no letterboxed primary strip under the home indicator */
+#map,
+#map .maplibregl-map,
+#map .maplibregl-canvas-container,
+#map .maplibregl-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
