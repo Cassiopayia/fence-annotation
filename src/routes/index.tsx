@@ -9,6 +9,7 @@ import {
   countMyAnnotations,
   fetchLeaderboard,
   listSystems,
+  patchSystemStatus,
 } from "@/lib/zaun/public-api";
 import { currentUsernameOrOmit } from "@/lib/zaun/supabase-client";
 
@@ -368,6 +369,18 @@ function Index() {
     window.setTimeout(() => setPop(false), 520);
   };
 
+  /** After a PV-linked save or skip — go to the next system and recenter. */
+  const advanceAfterPv = () => {
+    stepSystem(1);
+    setRecenterKey((k) => k + 1);
+  };
+
+  const markSystem = (id: string | undefined, patch: Record<string, unknown>, status: SystemStatus) => {
+    if (!id) return;
+    void patchSystemStatus(id, patch).catch(() => {});
+    setSystems((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
+  };
+
   const openMore = () => {
     // tapping More while it is open closes it again
     setTab((t) => (t === "more" ? "map" : "more"));
@@ -571,7 +584,28 @@ function Index() {
       {tab === "annotate" ? (
         <AnnotateView
           onExit={() => setTab("map")}
-          onSaved={registerSave}
+          onSaved={() => {
+            markSystem(selected, { annotated: true, status: "mine", fence_status: "mine" }, "mine");
+            registerSave();
+            advanceAfterPv();
+          }}
+          onExtraSaved={() => {
+            // Extra fence counts toward progress but stays on this PV.
+            registerSave();
+          }}
+          onSkipped={(reason) => {
+            markSystem(
+              selected,
+              {
+                status: "excluded",
+                fence_status: "excluded",
+                skip_reason: reason,
+                annotated: false,
+              },
+              "excluded",
+            );
+            advanceAfterPv();
+          }}
           onInfo={() => setOverlay("info")}
           solo={solo}
           onSolo={setSolo}

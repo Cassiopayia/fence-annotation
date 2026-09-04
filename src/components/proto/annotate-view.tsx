@@ -10,15 +10,29 @@ import { useMapHudInfo } from "@/hooks/use-map-hud-info";
 
 const CONTEXT = ["Rural", "Urban", "Complex"];
 const VISIBILITY = ["Clear", "Partial", "Occluded", "None"];
-const NO_DRAW_REASONS = ["No fence visible", "Can't label"];
+const NO_DRAW_REASONS = ["No fence visible", "Can't label"] as const;
+
+function geometryReady(geometry: GeoJSON.Geometry | null | undefined): boolean {
+  if (!geometry) return false;
+  if (geometry.type === "LineString") return (geometry.coordinates?.length || 0) >= 2;
+  if (geometry.type === "Polygon") return (geometry.coordinates?.[0]?.length || 0) >= 4;
+  if (geometry.type === "MultiPolygon") return (geometry.coordinates?.[0]?.[0]?.length || 0) >= 4;
+  return false;
+}
 
 /**
  * Guided annotation chrome on top of the shared MapCanvas.
  * Tap the map to place vertices; tap the first vertex again to close the ring.
+ *
+ * Lime tick → save PV-linked fence, then advance.
+ * + → save Extra (no PV link), stay on this system.
+ * Lime with nothing drawn → skip reasons → mark skipped and advance (no write of geometry).
  */
 export function AnnotateView({
   onExit: _onExit,
   onSaved,
+  onExtraSaved,
+  onSkipped,
   onInfo,
   solo,
   onSolo,
@@ -33,6 +47,8 @@ export function AnnotateView({
 }: {
   onExit: () => void;
   onSaved: () => void;
+  onExtraSaved?: () => void;
+  onSkipped?: (reason: string) => void;
   onInfo: () => void;
   solo: boolean;
   onSolo: (v: boolean) => void;
@@ -57,13 +73,14 @@ export function AnnotateView({
 
   useEffect(() => {
     // Ensure draw mode is armed every time this screen is shown (old guided flow).
+    document.body.dataset.extraFence = "0";
     DrawModule.setActiveState("ANNOTATION");
     const t = window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 200);
     const t2 = window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 600);
     const hideHint = window.setTimeout(() => setHint(false), 5000);
 
     const tick = () => {
-      const has = Boolean(getDrawnGeometry());
+      const has = geometryReady(getDrawnGeometry());
       setDrawn(has);
       if (has) setHint(false);
     };
@@ -82,12 +99,25 @@ export function AnnotateView({
       map?.off("draw.delete", tick);
       map?.off("draw.modechange", tick);
       window.clearInterval(id);
+      delete document.body.dataset.extraFence;
     };
   }, []);
 
+  const rearmDraw = () => {
+    document.body.dataset.extraFence = "0";
+    DrawModule.setActiveState("ANNOTATION");
+    window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 100);
+  };
+
+  const refreshAnnotations = async () => {
+    try {
+      MapModule.setAnnotations(await listAnnotations());
+    } catch (_) {}
+  };
+
   const commit = () => {
     const geometry = getDrawnGeometry();
-    if (!geometry || (geometry.type === "LineString" && geometry.coordinates.length < 2)) {
+    if (!geometryReady(geometry)) {
       setReasonOpen(true);
       return;
     }
@@ -95,19 +125,22 @@ export function AnnotateView({
     setCommitting(true);
     setSaveError(null);
     void saveAnnotation({
-      geometry,
-      properties: { area_id: selected, context, visibility },
+      geometry: geometry!,
+      properties: {
+        area_id: selected,
+        context,
+        visibility,
+        extra: "no",
+        sample: false,
+        link_systems: true,
+      },
     })
       .then(async () => {
         DrawModule.clearAll();
         setDrawn(false);
-        try {
-          MapModule.setAnnotations(await listAnnotations());
-        } catch (_) {}
+        await refreshAnnotations();
         onSaved();
-        // Stay in annotate and arm a fresh line for the next fence (old Save&Next).
-        DrawModule.setActiveState("ANNOTATION");
-        window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 100);
+        rearmDraw();
       })
       .catch((err) => {
         console.error("[AnnotateView] save failed", err);
@@ -118,31 +151,49 @@ export function AnnotateView({
 
   const saveExtra = () => {
     const geometry = getDrawnGeometry();
-    if (!geometry || (geometry.type === "LineString" && geometry.coordinates.length < 2)) {
+    if (!geometryReady(geometry)) {
       setHint(true);
+      setSaveError("Draw a fence first, then tap + to save it as Extra (not linked to this PV).");
       return;
     }
     setCommitting(true);
     setSaveError(null);
+    document.body.dataset.extraFence = "1";
     void saveAnnotation({
-      geometry,
-      properties: { context, visibility, extra: "yes" },
+      geometry: geometry!,
+      properties: {
+        context,
+        visibility,
+        extra: "yes",
+        sample: true,
+        link_systems: false,
+      },
     })
       .then(async () => {
         DrawModule.clearAll();
         setDrawn(false);
-        try {
-          MapModule.setAnnotations(await listAnnotations());
-        } catch (_) {}
-        onSaved();
-        DrawModule.setActiveState("ANNOTATION");
-        window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 100);
+        await refreshAnnotations();
+        // Extra stays on this system — do not advance.
+        (onExtraSaved || onSaved)();
+        rearmDraw();
       })
       .catch((err) => {
         console.error("[AnnotateView] extra save failed", err);
         setSaveError(err instanceof Error ? err.message : String(err));
       })
-      .finally(() => setCommitting(false));
+      .finally(() => {
+        setCommitting(false);
+        document.body.dataset.extraFence = "0";
+      });
+  };
+
+  const skipWithReason = (reason: string) => {
+    setReasonOpen(false);
+    DrawModule.clearAll();
+    setDrawn(false);
+    setSaveError(null);
+    onSkipped?.(reason);
+    rearmDraw();
   };
 
   return (
@@ -161,7 +212,7 @@ export function AnnotateView({
             label="Undo last point"
             onClick={() => {
               DrawModule.deleteActiveOrSelectedFeature?.();
-              setDrawn(Boolean(getDrawnGeometry()));
+              setDrawn(geometryReady(getDrawnGeometry()));
             }}
           >
             <Undo2 className="size-5" />
@@ -184,6 +235,7 @@ export function AnnotateView({
         <div className="pointer-events-none absolute inset-x-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-30 flex justify-center">
           <p className="max-w-[20rem] rounded-2xl border border-border bg-card px-3 py-2 text-center text-[12px] font-medium">
             Tap the map to place fence points. Tap the first point again to close the ring, then hit the lime tick.
+            Use + for an Extra fence (not linked to this PV).
           </p>
         </div>
       )}
@@ -204,17 +256,14 @@ export function AnnotateView({
       >
         {reasonOpen ? (
           <div className="glass space-y-2 rounded-3xl border border-border p-2 shadow-hud">
+            <p className="px-2 pt-1 text-center text-[12px] font-medium text-muted-foreground">
+              Skip this system without saving a fence?
+            </p>
             {NO_DRAW_REASONS.map((r) => (
               <button
                 key={r}
                 type="button"
-                onClick={() => {
-                  // Skip without persisting — only the lime Save button writes.
-                  setReasonOpen(false);
-                  DrawModule.clearAll();
-                  setDrawn(false);
-                  DrawModule.setActiveState("ANNOTATION");
-                }}
+                onClick={() => skipWithReason(r)}
                 className="h-11 w-full rounded-full bg-secondary text-sm font-semibold text-secondary-foreground"
               >
                 {r}
@@ -256,8 +305,9 @@ export function AnnotateView({
                 id="guided-save-extra-btn"
                 type="button"
                 onClick={saveExtra}
+                disabled={committing}
                 aria-label="Save extra fence without PV link"
-                className="glass grid size-11 place-items-center rounded-full border border-border shadow-hud"
+                className="glass grid size-11 place-items-center rounded-full border border-border shadow-hud disabled:opacity-50"
               >
                 <Plus className="size-5" />
               </button>
@@ -280,6 +330,7 @@ export function AnnotateView({
                   id="guided-save-btn"
                   type="button"
                   onClick={commit}
+                  disabled={committing}
                   aria-label="Save fence and continue"
                   className={cn(
                     "grid size-11 place-items-center rounded-full bg-lime text-lime-foreground shadow-hud",

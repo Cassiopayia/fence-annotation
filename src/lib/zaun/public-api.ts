@@ -340,10 +340,20 @@ export async function countMyAnnotations() {
   }
 }
 
+function upsertLocalAnnotation(feature) {
+  if (!feature) return;
+  const stored = readJson(ANN_KEY, emptyFc());
+  const id = featureId(feature);
+  const next = (stored.features || []).filter((item) => featureId(item) !== id);
+  next.push(feature);
+  writeJson(ANN_KEY, { type: 'FeatureCollection', features: next });
+}
+
 export async function saveAnnotation(payload) {
   await ensureAuthSession();
   const geometry = publicGeometry(payload.geometry);
   const existingId = String(payload.id || payload.properties?.fence_id || '');
+  const clientProps = { ...(payload.properties || {}) };
   const sb = getSupabase();
   if (sb) {
     return withSupabaseReach(async () => {
@@ -353,18 +363,50 @@ export async function saveAnnotation(payload) {
           p_geometry: geometry,
         });
         if (error) throw error;
-        return rowToFeature(unwrapRpc(data)) || featureFromGeometry(existingId, geometry, {
-          author_label: payload.properties?.author_label,
+        const feature = rowToFeature(unwrapRpc(data)) || featureFromGeometry(existingId, geometry, {
+          author_label: clientProps.author_label || authorLabel(),
+          ...clientProps,
         });
+        if (feature?.properties) Object.assign(feature.properties, clientProps, feature.properties);
+        upsertLocalAnnotation(feature);
+        return feature;
       }
       const args = { p_geometry: geometry };
       const username = currentUsernameOrOmit();
       if (username) args.p_username = username;
-      const { data, error } = await sb.rpc('create_annotation', args);
+      // Best-effort metadata — older RPCs ignore unknown args; retry bare on failure.
+      if (clientProps.area_id != null && clientProps.extra !== 'yes') {
+        args.p_area_id = clientProps.area_id;
+      }
+      if (clientProps.extra === 'yes' || clientProps.sample === true) {
+        args.p_extra = true;
+        args.p_sample = true;
+      }
+      let data;
+      let error;
+      ({ data, error } = await sb.rpc('create_annotation', args));
+      if (error && /p_area_id|p_extra|p_sample|unexpected|could not find/i.test(String(error.message || ''))) {
+        ({ data, error } = await sb.rpc('create_annotation', {
+          p_geometry: geometry,
+          ...(username ? { p_username: username } : {}),
+        }));
+      }
       if (error) throw error;
       const created = unwrapRpc(data);
       const id = extractId(created) || extractId(data);
-      return rowToFeature(created) || featureFromGeometry(id, geometry, { author_label: username || GUEST_AUTHOR_LABEL });
+      const feature = rowToFeature(created) || featureFromGeometry(id, geometry, {
+        author_label: username || GUEST_AUTHOR_LABEL,
+        ...clientProps,
+      });
+      // Keep client stamps (extra / area_id) for map paint even if RPC omits them.
+      if (feature?.properties) {
+        Object.assign(feature.properties, clientProps, {
+          fence_id: String(feature.properties.fence_id || id),
+          author_label: feature.properties.author_label || username || GUEST_AUTHOR_LABEL,
+        });
+      }
+      upsertLocalAnnotation(feature);
+      return feature;
     });
   }
 
@@ -373,17 +415,13 @@ export async function saveAnnotation(payload) {
     id: existingId || (crypto.randomUUID?.() || `ann_${Date.now()}`),
     geometry,
     properties: {
-      ...(payload.properties || {}),
+      ...clientProps,
       author_label: authorLabel(),
-      created_at: payload.properties?.created_at || new Date().toISOString(),
+      created_at: clientProps.created_at || new Date().toISOString(),
     },
   };
   feature.properties.fence_id = String(feature.id);
-  const stored = readJson(ANN_KEY, emptyFc());
-  const id = featureId(feature);
-  const next = (stored.features || []).filter((item) => featureId(item) !== id);
-  next.push(feature);
-  writeJson(ANN_KEY, { type: 'FeatureCollection', features: next });
+  upsertLocalAnnotation(feature);
   return decorateLocal([feature], localDecisionMap())[0];
 }
 

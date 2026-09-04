@@ -587,16 +587,26 @@ export function initMapLayers(map, draw) {
 export function isExtraSampleFenceProps(props) {
   if (!props || typeof props !== 'object') return false;
   const cat = String(props.category || props.type || 'fence').toLowerCase();
-  if (cat !== 'fence') return false;
-  const sample = props.sample;
-  const sampleOn = sample === true || sample === 'true' || sample === 1 || sample === '1';
-  if (!sampleOn) return false;
+  if (cat && cat !== 'fence') return false;
+
   const link = props.link_systems;
   const explicitlyUnlinked = link === false || link === 'false' || link === 0 || link === '0';
   const areas = props.area_ids || props.pv_system_ids || [];
   const hasPvLink = (Array.isArray(areas) && areas.length > 0)
-    || props.area_id != null
-    || props.pv_system_id != null;
+    || (props.area_id != null && props.area_id !== '')
+    || (props.pv_system_id != null && props.pv_system_id !== '');
+
+  // Explicit extra stamp from the + button (or draw stamp).
+  const extra = props.extra;
+  const extraOn = extra === 'yes' || extra === true || extra === 1 || extra === '1';
+  if (extraOn) {
+    if (hasPvLink && !explicitlyUnlinked) return false;
+    return true;
+  }
+
+  const sample = props.sample;
+  const sampleOn = sample === true || sample === 'true' || sample === 1 || sample === '1';
+  if (!sampleOn) return false;
   // Violet only for true Extra/sample: sample flag + no PV link.
   if (hasPvLink && !explicitlyUnlinked) return false;
   return explicitlyUnlinked || !hasPvLink;
