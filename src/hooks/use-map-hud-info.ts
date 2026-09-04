@@ -18,12 +18,6 @@ function serviceLabel(layerId: string | null | undefined, zoom: number): string 
   if (zoom >= 14) return "Land DOP";
   return "basemap.de";
 }
-  if (id === "maxar" || id === "dop20") return "Esri / Maxar";
-  if (id === "osm") return "OSM";
-  if (id === "basemap") return "basemap.de";
-  if (zoom >= 14) return "Land DOP";
-  return "basemap.de";
-}
 
 /** Live map zoom + active imagery label for the info pill. */
 export function useMapHudInfo() {

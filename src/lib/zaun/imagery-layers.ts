@@ -97,8 +97,22 @@ export function basemapSwitchWarning(previousLayerId, nextLayerId) {
   );
 }
 
+/** Preferred insert-before targets so new rasters never land above PV / fences. */
+const VECTOR_ANCHOR_IDS = [
+  'systems-fill',
+  'systems-line',
+  'annotations-fill',
+  'annotations-line',
+  'german-states-highlight-fill',
+  'german-states-outline',
+];
+
 /** First non-raster style layer — insert WMS/DOP rasters before this so vectors stay on top. */
 export function firstNonRasterLayerId(map) {
+  if (!map?.getLayer) return undefined;
+  for (const id of VECTOR_ANCHOR_IDS) {
+    if (map.getLayer(id)) return id;
+  }
   const layers = map?.getStyle?.()?.layers || [];
   for (const layer of layers) {
     if (layer?.type && layer.type !== 'raster') return layer.id;
@@ -110,23 +124,29 @@ export function firstNonRasterLayerId(map) {
  * Keep imagery (rasters) under overlays. Order bottom→top among overlays:
  * coverage → systems → annotations → snap → export preview → Mapbox Draw.
  *
- * Without this, Land DOP WMS was inserted under annotations-line and covered
- * annotation fills + live draw (draw is registered before data layers).
+ * PV systems + annotations are always raised above every basemap / Land DOP
+ * raster and coverage tint so fences stay visible while browsing.
  */
 export function ensureMapOverlayStack(map) {
   if (!map?.getLayer || !map?.moveLayer) return;
-  const overlayOrder = [
+
+  const underlays = [
     'dop-coverage-bounds-fill',
     'dop-coverage-fill',
     'dop-coverage-outline',
     'german-states-highlight-fill',
     'german-states-outline',
     'german-states-highlight',
+  ];
+  // Data vectors — must sit above every imagery / coverage layer.
+  const dataOverlays = [
     'systems-fill',
     'systems-line',
     'systems-hit',
     'annotations-fill',
     'annotations-line',
+  ];
+  const helpers = [
     'snap-target-ring',
     'snap-target-pulse',
     'export-chip-preview-aoi-fill',
@@ -135,11 +155,21 @@ export function ensureMapOverlayStack(map) {
     'export-chip-preview-full-line',
     'export-chip-preview-chip-line',
   ];
-  for (const id of overlayOrder) {
+
+  for (const id of [...underlays, ...dataOverlays, ...helpers]) {
     if (map.getLayer(id)) {
       try { map.moveLayer(id); } catch (_) {}
     }
   }
+
+  // Any leftover non-raster that isn't draw / our known stack stays under data:
+  // re-raise data + helpers once more so accidental inserts can't bury fences.
+  for (const id of [...dataOverlays, ...helpers]) {
+    if (map.getLayer(id)) {
+      try { map.moveLayer(id); } catch (_) {}
+    }
+  }
+
   const layers = map.getStyle?.()?.layers || [];
   for (const layer of layers) {
     if (String(layer?.id || '').startsWith('gl-draw')) {

@@ -3,6 +3,7 @@
 
 import * as maplibregl from 'maplibre-gl';
 import { DrawModule } from './draw';
+import { ensureMapOverlayStack } from './imagery-layers';
 import { assetUrl } from './wms-client';
 
 export function initMapLayers(map, draw) {
@@ -305,6 +306,8 @@ export function initMapLayers(map, draw) {
         'circle-stroke-width': 1.25
       }
     });
+
+    ensureMapOverlayStack(map);
   }
 
   function setDistractionBlending(areaId, systemOpacity = 0.42) {
@@ -516,8 +519,12 @@ export function initMapLayers(map, draw) {
       const src = map?.getSource('annotations');
       if (!src) return;
       src.setData(normalizeAnnotationsForPaint(data));
+      ensureMapOverlayStack(map);
     },
-    setSystems: (data) => map?.getSource('systems')?.setData(data)
+    setSystems: (data) => {
+      map?.getSource('systems')?.setData(data);
+      ensureMapOverlayStack(map);
+    }
   };
 }
 
