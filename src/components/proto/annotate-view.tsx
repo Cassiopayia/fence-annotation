@@ -12,7 +12,7 @@ const CONTEXT = ["Rural", "Urban", "Complex"];
 const VISIBILITY = ["Clear", "Partial", "Occluded", "None"];
 const NO_DRAW_REASONS = ["No fence visible", "Can't label"] as const;
 
-function geometryReady(geometry: GeoJSON.Geometry | null | undefined): boolean {
+function hasDrawableGeometry(geometry: GeoJSON.Geometry | null | undefined): boolean {
   if (!geometry) return false;
   if (geometry.type === "LineString") return (geometry.coordinates?.length || 0) >= 2;
   if (geometry.type === "Polygon") return (geometry.coordinates?.[0]?.length || 0) >= 4;
@@ -20,13 +20,35 @@ function geometryReady(geometry: GeoJSON.Geometry | null | undefined): boolean {
   return false;
 }
 
+/** Closed fence ready to persist as a PV-linked annotation. */
+function fenceReadyToSave(geometry: GeoJSON.Geometry | null | undefined): boolean {
+  if (!geometry) return false;
+  if (geometry.type === "Polygon" || geometry.type === "MultiPolygon") {
+    return hasDrawableGeometry(geometry);
+  }
+  if (geometry.type === "LineString") {
+    // Prefer DrawModule closure check (snap-close / first≈last).
+    try {
+      if (DrawModule.checkClosure?.()) return true;
+    } catch (_) {}
+    const coords = geometry.coordinates || [];
+    if (coords.length < 4) return false;
+    const a = coords[0];
+    const b = coords[coords.length - 1];
+    if (!Array.isArray(a) || !Array.isArray(b)) return false;
+    return Math.abs(Number(a[0]) - Number(b[0])) < 1e-7
+      && Math.abs(Number(a[1]) - Number(b[1])) < 1e-7;
+  }
+  return false;
+}
+
 /**
  * Guided annotation chrome on top of the shared MapCanvas.
  * Tap the map to place vertices; tap the first vertex again to close the ring.
  *
- * Lime tick → save PV-linked fence, then advance.
+ * Lime tick + closed fence → save PV-linked annotation, then next system.
+ * Lime tick without a closed fence → set labels + pick a flag reason → flag & next.
  * + → save Extra (no PV link), stay on this system.
- * Lime with nothing drawn → skip reasons → mark skipped and advance (no write of geometry).
  */
 export function AnnotateView({
   onExit: _onExit,
@@ -48,7 +70,7 @@ export function AnnotateView({
   onExit: () => void;
   onSaved: () => void;
   onExtraSaved?: () => void;
-  onSkipped?: (reason: string) => void;
+  onSkipped?: (reason: string, tags: { context: string; visibility: string }) => void;
   onInfo: () => void;
   solo: boolean;
   onSolo: (v: boolean) => void;
@@ -65,6 +87,7 @@ export function AnnotateView({
   const [context, setContext] = useState(CONTEXT[0]!);
   const [visibility, setVisibility] = useState(VISIBILITY[0]!);
   const [drawn, setDrawn] = useState(false);
+  const [closed, setClosed] = useState(false);
   const [aoi, setAoi] = useState(true);
   const [reasonOpen, setReasonOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
@@ -80,9 +103,12 @@ export function AnnotateView({
     const hideHint = window.setTimeout(() => setHint(false), 5000);
 
     const tick = () => {
-      const has = geometryReady(getDrawnGeometry());
+      const geom = getDrawnGeometry();
+      const has = hasDrawableGeometry(geom);
+      const ready = fenceReadyToSave(geom);
       setDrawn(has);
-      if (has) setHint(false);
+      setClosed(ready);
+      if (has || ready) setHint(false);
     };
     const map = MapModule.getMap?.();
     map?.on("draw.create", tick);
@@ -117,8 +143,10 @@ export function AnnotateView({
 
   const commit = () => {
     const geometry = getDrawnGeometry();
-    if (!geometryReady(geometry)) {
+    // Only a closed fence saves; otherwise open flag reasons (with labels).
+    if (!fenceReadyToSave(geometry)) {
       setReasonOpen(true);
+      setHint(false);
       return;
     }
     setDrawn(true);
@@ -138,6 +166,7 @@ export function AnnotateView({
       .then(async () => {
         DrawModule.clearAll();
         setDrawn(false);
+        setClosed(false);
         await refreshAnnotations();
         onSaved();
         rearmDraw();
@@ -151,9 +180,9 @@ export function AnnotateView({
 
   const saveExtra = () => {
     const geometry = getDrawnGeometry();
-    if (!geometryReady(geometry)) {
+    if (!fenceReadyToSave(geometry)) {
       setHint(true);
-      setSaveError("Draw a fence first, then tap + to save it as Extra (not linked to this PV).");
+      setSaveError("Close the fence ring first, then tap + to save it as Extra (not linked to this PV).");
       return;
     }
     setCommitting(true);
@@ -172,6 +201,7 @@ export function AnnotateView({
       .then(async () => {
         DrawModule.clearAll();
         setDrawn(false);
+        setClosed(false);
         await refreshAnnotations();
         // Extra stays on this system — do not advance.
         (onExtraSaved || onSaved)();
@@ -191,8 +221,10 @@ export function AnnotateView({
     setReasonOpen(false);
     DrawModule.clearAll();
     setDrawn(false);
+    setClosed(false);
     setSaveError(null);
-    onSkipped?.(reason);
+    // Flag only — never write a fence geometry on this path.
+    onSkipped?.(reason, { context, visibility });
     rearmDraw();
   };
 
@@ -212,7 +244,9 @@ export function AnnotateView({
             label="Undo last point"
             onClick={() => {
               DrawModule.deleteActiveOrSelectedFeature?.();
-              setDrawn(geometryReady(getDrawnGeometry()));
+              const geom = getDrawnGeometry();
+              setDrawn(hasDrawableGeometry(geom));
+              setClosed(fenceReadyToSave(geom));
             }}
           >
             <Undo2 className="size-5" />
@@ -257,8 +291,28 @@ export function AnnotateView({
         {reasonOpen ? (
           <div className="glass space-y-2 rounded-3xl border border-border p-2 shadow-hud">
             <p className="px-2 pt-1 text-center text-[12px] font-medium text-muted-foreground">
-              Skip this system without saving a fence?
+              Flag this system — no fence will be saved.
             </p>
+            {!solo && (
+              <div className="flex flex-wrap gap-1.5 px-1">
+                <CyclePill
+                  id="tag-context-flag"
+                  label="context"
+                  options={CONTEXT}
+                  value={context}
+                  onChange={setContext}
+                  className="glass w-auto flex-none gap-1.5 border border-border px-2.5 py-1 shadow-hud"
+                />
+                <CyclePill
+                  id="tag-visibility-flag"
+                  label="visibility"
+                  options={VISIBILITY}
+                  value={visibility}
+                  onChange={setVisibility}
+                  className="glass w-auto flex-none gap-1.5 border border-border px-2.5 py-1 shadow-hud"
+                />
+              </div>
+            )}
             {NO_DRAW_REASONS.map((r) => (
               <button
                 key={r}
@@ -334,7 +388,7 @@ export function AnnotateView({
                   aria-label="Save fence and continue"
                   className={cn(
                     "grid size-11 place-items-center rounded-full bg-lime text-lime-foreground shadow-hud",
-                    drawn && !committing && "animate-tick-wiggle",
+                    closed && !committing && "animate-tick-wiggle",
                     committing && "animate-tick-commit",
                   )}
                 >

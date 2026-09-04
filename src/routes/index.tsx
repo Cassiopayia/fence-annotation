@@ -593,16 +593,18 @@ function Index() {
             // Extra fence counts toward progress but stays on this PV.
             registerSave();
           }}
-          onSkipped={(reason) => {
+          onSkipped={(reason, tags) => {
             markSystem(
               selected,
               {
-                status: "excluded",
-                fence_status: "excluded",
+                status: "flagged",
+                fence_status: "flagged",
                 skip_reason: reason,
+                context: tags.context,
+                visibility: tags.visibility,
                 annotated: false,
               },
-              "excluded",
+              "flagged",
             );
             advanceAfterPv();
           }}
