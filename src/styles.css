@@ -360,7 +360,9 @@
   body,
   #root {
     height: 100%;
-    height: 100dvh;
+    min-height: 100%;
+    min-height: 100dvh;
+    min-height: -webkit-fill-available;
     width: 100%;
     margin: 0;
     overscroll-behavior: none;
@@ -373,6 +375,9 @@
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     overflow: hidden;
+    /* Fill the dynamic visual viewport (iOS URL bar / home indicator). */
+    position: fixed;
+    inset: 0;
   }
 
   h1,

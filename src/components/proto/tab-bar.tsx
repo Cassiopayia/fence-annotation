@@ -27,7 +27,7 @@ export function TabBar({
   return (
     <nav
       id="mobile-tab-bar"
-      className="absolute inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[max(6px,env(safe-area-inset-bottom))]"
+      className="absolute inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom,0px)]"
     >
       <ul className="grid grid-cols-3">
         {TABS.map(({ id, label, Icon }) => {

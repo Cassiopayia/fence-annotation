@@ -358,9 +358,9 @@ function Index() {
   /** the tab bar hides in annotation, slideshow and review to free vertical space */
   const chromeless = solo || tab === "annotate" || slideshow;
   /** the action bar stays bottom-anchored: above the tab bar, or at the very bottom edge without it */
-  const barBottom = chromeless ? "max(10px,env(safe-area-inset-bottom))" : "calc(66px + env(safe-area-inset-bottom))";
-  /** Keep annotate save/exit circles above the action bar (was sitting under it). */
-  const panelOffset = chromeless ? 118 : 148;
+  const barBottom = chromeless ? "max(8px,env(safe-area-inset-bottom))" : "calc(58px + env(safe-area-inset-bottom))";
+  /** Keep annotate save/exit circles just above the action bar (no dead strip). */
+  const panelOffset = chromeless ? 72 : 140;
 
 
   const registerSave = () => {
@@ -552,7 +552,7 @@ function Index() {
   if (review) return <ChipReview onExit={() => setReview(false)} />;
 
   return (
-    <main className="fixed inset-0 h-[100dvh] w-full overflow-hidden bg-card">
+    <main className="fixed inset-0 w-full overflow-hidden bg-card">
       {/* One map for map + annotate — remounting killed MapboxDraw mid-session. */}
       <MapCanvas
         focus={tab === "annotate"}
@@ -566,7 +566,7 @@ function Index() {
           if (tab !== "annotate") setOverlay("inspect");
         }}
         recenterKey={recenterKey}
-        bottomPad={chromeless ? 90 : 150}
+        bottomPad={chromeless ? 72 : 140}
         drawing={tab === "annotate"}
         showAttribution={
           tab === "map" && !solo && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed
@@ -892,20 +892,23 @@ function Index() {
         </div>
       )}
 
-      {/* Map-only system stepper / search — hide under sheets and on other tabs */}
-      {tab === "map" && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && (
+      {/* Action bar — map + annotate (tabs hide on annotate; bar drops to the bottom edge) */}
+      {(tab === "map" || tab === "annotate") && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
       <div id="action-bar" className="absolute inset-x-4 z-40" style={{ bottom: barBottom }}>
         <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
           <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
             <ChevronLeft className="size-5" />
           </HudButton>
-          {slideshow ? (
+          {tab === "annotate" || slideshow ? (
             <button
               type="button"
-              onClick={() => setTab("annotate")}
+              onClick={() => setRecenterKey((k) => k + 1)}
               className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-sm font-semibold"
             >
-              <PenLine className="size-4" /> Edit on map
+              <span className="truncate font-mono text-xs">
+                {selectedLabel || "Current system"}
+                {selectedHa ? ` · ${selectedHa}` : ""}
+              </span>
             </button>
           ) : (
             <button
@@ -929,8 +932,8 @@ function Index() {
       )}
 
       {/* map mode: the engaging annotate button, right above the bar's ▶ */}
-      {tab === "map" && !solo && !slideshow && !overlay && !welcomeOpen && !(installOpen && offerInstall) && (
-        <div className="absolute inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + 78px)` }}>
+      {tab === "map" && !solo && !slideshow && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
+        <div className="absolute inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + 70px)` }}>
           <button
             id="fab-sample-fence"
             type="button"
@@ -944,7 +947,7 @@ function Index() {
 
 
       {/* Hide under welcome/install — translucent backdrop otherwise shows clipped tab labels as fuzzy green lines */}
-      {!chromeless && !welcomeOpen && !(installOpen && offerInstall) && (
+      {!chromeless && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
         <TabBar
           value={tab}
           onChange={(t) => {
