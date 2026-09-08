@@ -1,0 +1,25 @@
+{
+  "name": "fency",
+  "short_name": "fency",
+  "description": "Annotate photovoltaic fence lines on aerial imagery.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#1a1f1c",
+  "theme_color": "#1a1f1c",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

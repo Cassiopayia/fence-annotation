@@ -1,0 +1,63 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build static site
+        env:
+          # Project-site path from the repo name — no hardcoded slug
+          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ secrets.VITE_SUPABASE_PUBLISHABLE_KEY }}
+          # Legacy alias if the new secret name is unset
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          TURNSTILE_SITEKEY: ${{ secrets.TURNSTILE_SITEKEY }}
+          VITE_TURNSTILE_SITEKEY: ${{ secrets.TURNSTILE_SITEKEY }}
+          EMAIL: ${{ secrets.EMAIL }}
+          VITE_BUG_REPORT_URL: https://github.com/${{ github.repository }}/issues/new?template=bug_report.md&title=%5BBug%5D%20
+        run: npm run build
+
+      - name: Prepare Pages artifact
+        run: |
+          OUT=dist/client
+          if [ ! -d "$OUT" ]; then OUT=dist; fi
+          test -f "$OUT/index.html"
+          echo "artifact_dir=$OUT" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: ${{ env.artifact_dir }}
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5

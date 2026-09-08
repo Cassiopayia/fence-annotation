@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+dist/
+
+# Locks / OS
+.DS_Store
+**/.DS_Store
+*.local
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editor
+.vscode/
+.idea/
+
+# Reference kit (integrated under src/lib/zaun)
+zaun-pages-map-stack/
