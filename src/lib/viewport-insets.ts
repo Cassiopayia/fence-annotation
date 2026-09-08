@@ -36,8 +36,8 @@ export function applyViewportInsets(): void {
 
   if (standalone) {
     // env() is often 0 in installed PWAs even with viewport-fit=cover.
-    if (sab < 12) sab = 20;
-    if (sat < 12) sat = 20;
+    if (sab < 12) sab = 34;
+    if (sat < 12) sat = 47;
   } else if (vv) {
     // Mobile Safari: layout viewport extends under the bottom toolbar.
     const toolbar = Math.max(0, innerH - vv.height - vv.offsetTop);

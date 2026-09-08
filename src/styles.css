@@ -522,10 +522,11 @@
   animation: tour-flash 1.5s ease-in-out infinite;
 }
 
-/* PWA: fill home-indicator strip with tab bar background; browser: sit above Safari toolbar */
+/* PWA: tab row sits above home indicator; padding strip stays transparent (map shows through). */
 #mobile-tab-bar {
   bottom: 0;
   padding-bottom: var(--sab);
+  background: transparent;
 }
 html[data-display-mode="browser"] #mobile-tab-bar {
   bottom: var(--sab);
