@@ -25,7 +25,6 @@ import {
   ScanSearch,
   Eye,
   EyeOff,
-
   HelpCircle,
   ListTree,
   ShieldCheck,
@@ -46,10 +45,18 @@ import { ChipReview } from "@/components/proto/chip-review";
 import { Loupe } from "@/components/proto/loupe";
 import { Overview } from "@/components/proto/overview";
 import { MoreStatus } from "@/components/proto/more-status";
-import { StatusDot, StatusLegend, StatusTag, type SystemStatus } from "@/components/proto/status";
+import {
+  StatusDot,
+  StatusLegend,
+  StatusTag,
+  type SystemStatus,
+} from "@/components/proto/status";
 import { WelcomeBack } from "@/components/proto/welcome-back";
 import { Leaderboard } from "@/components/proto/leaderboard";
-import { CaptchaGate, captchaConfigured } from "@/components/proto/captcha-gate";
+import {
+  CaptchaGate,
+  captchaConfigured,
+} from "@/components/proto/captcha-gate";
 import {
   Preferences,
   useThemeEffect,
@@ -60,7 +67,10 @@ import {
 
 import { Tour, type TourStep } from "@/components/proto/tour";
 import { TabBar, type Tab } from "@/components/proto/tab-bar";
-import { InstallPrompt, useInstallOffer } from "@/components/proto/install-prompt";
+import {
+  InstallPrompt,
+  useInstallOffer,
+} from "@/components/proto/install-prompt";
 import {
   HudButton,
   InfoPill,
@@ -97,7 +107,10 @@ export const Route = createFileRoute("/")({
         content:
           "Phone-first shell for fency: full-bleed map, guided fence annotation and full-screen dataset chip review, designed for standalone iOS PWA.",
       },
-      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1, viewport-fit=cover",
+      },
       { property: "og:title", content: "fency" },
       {
         property: "og:description",
@@ -110,7 +123,10 @@ export const Route = createFileRoute("/")({
       { name: "apple-mobile-web-app-title", content: "fency" },
       { name: "application-name", content: "fency" },
       { name: "mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-status-bar-style", content: "black-translucent" },
+      {
+        name: "apple-mobile-web-app-status-bar-style",
+        content: "black-translucent",
+      },
       { name: "theme-color", content: "#1a1f1c" },
     ],
   }),
@@ -125,7 +141,16 @@ import {
   ringAreaHa,
 } from "./-home-copy";
 
-type Overlay = "systems" | "inspect" | "imagery" | "info" | "onboarding" | "overview" | "whatisthis" | "leaderboard" | null;
+type Overlay =
+  | "systems"
+  | "inspect"
+  | "imagery"
+  | "info"
+  | "onboarding"
+  | "overview"
+  | "whatisthis"
+  | "leaderboard"
+  | null;
 
 function Index() {
   const [tab, setTab] = useState<Tab>("map");
@@ -137,7 +162,8 @@ function Index() {
   const [recenterKey, setRecenterKey] = useState(0);
 
   /** Still needs a fence — skip already annotated / flagged / excluded systems. */
-  const isOpenForAnnotate = (s: { status: SystemStatus }) => s.status === "open";
+  const isOpenForAnnotate = (s: { status: SystemStatus }) =>
+    s.status === "open";
 
   const findOpenSystemId = (
     list: typeof systems,
@@ -174,15 +200,17 @@ function Index() {
     const cur = systems.find((s) => s.id === selected);
     if (!cur || !isOpenForAnnotate(cur)) {
       const nextId =
-        findOpenSystemId(systems, selected, 1)
-        ?? systems.find((s) => isOpenForAnnotate(s))?.id;
+        findOpenSystemId(systems, selected, 1) ??
+        systems.find((s) => isOpenForAnnotate(s))?.id;
       if (!nextId) return; // nothing left to annotate
       setSelected(nextId);
     }
     setTab("annotate");
     setRecenterKey((k) => k + 1);
   };
-  const [imagery, setImagery] = useState<ImagerySnapshot>(() => getImagerySnapshot());
+  const [imagery, setImagery] = useState<ImagerySnapshot>(() =>
+    getImagerySnapshot(),
+  );
   const [dopErrorId, setDopErrorId] = useState<string | null>(null);
   const [solo, setSolo] = useState(false);
   const [loupe, setLoupe] = useState(false);
@@ -196,10 +224,12 @@ function Index() {
   });
   const [tourOpen, setTourOpen] = useState(false);
   const [installOpen, setInstallOpen] = useState(false);
-  const [captchaPassed, setCaptchaPassed] = useState(() => !captchaConfigured());
+  const [captchaPassed, setCaptchaPassed] = useState(
+    () => !captchaConfigured(),
+  );
   const offerInstall = useInstallOffer();
 
-  const [lang, setLang] = usePersisted<Lang>("zaun.lang", "en");
+  const [lang, setLang] = usePersisted<Lang>("i18n.lang", "en");
   const [theme, setTheme] = usePersisted<Theme>("zaun.theme", "light");
   const [scheme, setScheme] = usePersisted<Scheme>("zaun.scheme", "voltage");
 
@@ -222,6 +252,7 @@ function Index() {
   };
   const openContact = () => {
     if (!contactMailto) return;
+    // mailto: URLs are safe to redirect to
     window.location.href = contactMailto;
   };
   const [saved, setSaved] = useState(0);
@@ -231,8 +262,12 @@ function Index() {
   const [welcomeStats, setWelcomeStats] = useState<WelcomeStats | null>(null);
   const [board, setBoard] = useState<BoardRow[] | null>(null);
   const [boardLoading, setBoardLoading] = useState(true);
-  const [username, setUsernameState] = useState<string | null>(() => currentUsernameOrOmit());
-  const [connection, setConnection] = useState<ConnectionStatus>(() => getConnectionStatus());
+  const [username, setUsernameState] = useState<string | null>(() =>
+    currentUsernameOrOmit(),
+  );
+  const [connection, setConnection] = useState<ConnectionStatus>(() =>
+    getConnectionStatus(),
+  );
   const { zoomLabel, service: imageryService } = useMapHudInfo();
   const selectedSys = systems.find((s) => s.id === selected);
   const selectedHa = selectedSys ? ringAreaHa(selectedSys.ring) : undefined;
@@ -273,27 +308,43 @@ function Index() {
           listAnnotations().catch(() => null),
         ]);
         if (cancelled) return;
-        const features = (sysFc as { features?: unknown[] } | null)?.features || [];
+        const features =
+          (sysFc as { features?: unknown[] } | null)?.features || [];
         const total = features.length || null;
         let annotated = 0;
         let flaggedLocal = 0;
-        for (const f of features as { properties?: Record<string, unknown> }[]) {
+        for (const f of features as {
+          properties?: Record<string, unknown>;
+        }[]) {
           const p = f.properties || {};
-          if (p.annotated === true || p.status === "annotated" || p.status === "mine" || p.status === "verified" || p.status === "awaiting") {
+          if (
+            p.annotated === true ||
+            p.status === "annotated" ||
+            p.status === "mine" ||
+            p.status === "verified" ||
+            p.status === "awaiting"
+          ) {
             annotated += 1;
           }
-          if (p.status === "flagged" || p.fence_status === "flagged") flaggedLocal += 1;
+          if (p.status === "flagged" || p.fence_status === "flagged")
+            flaggedLocal += 1;
         }
         let chipsReviewed = 0;
         let flagVotes = 0;
-        for (const f of (annFc as { features?: { properties?: Record<string, unknown> }[] } | null)?.features || []) {
+        for (const f of (
+          annFc as {
+            features?: { properties?: Record<string, unknown> }[];
+          } | null
+        )?.features || []) {
           const p = f.properties || {};
           const mine = String(p.my_decision || "").trim();
           if (mine) chipsReviewed += 1;
-          if (mine === "needs_changes" || Number(p.needs_changes || 0) > 0) flagVotes += 1;
+          if (mine === "needs_changes" || Number(p.needs_changes || 0) > 0)
+            flagVotes += 1;
         }
         const people = lb.length || null;
-        const communityPoints = lb.reduce((s, r) => s + (r.points || 0), 0) || null;
+        const communityPoints =
+          lb.reduce((s, r) => s + (r.points || 0), 0) || null;
         const stats: DatasetStats = {
           total,
           annotated: total != null ? annotated : null,
@@ -348,7 +399,6 @@ function Index() {
     ? "calc(var(--action-bar-height) + var(--sab) + 1rem)"
     : "calc(var(--tab-bar-inner-height) + var(--action-bar-height) + var(--sab) + 0.75rem)";
 
-
   const registerSave = () => {
     setSaved((s) => s + 1);
     setPop(true);
@@ -356,17 +406,26 @@ function Index() {
   };
 
   /** After a PV-linked save or skip — go to the next still-open system and recenter. */
-  const advanceAfterPv = (justDoneId?: string, justDoneStatus?: SystemStatus) => {
+  const advanceAfterPv = (
+    justDoneId?: string,
+    justDoneStatus?: SystemStatus,
+  ) => {
     const list =
       justDoneId && justDoneStatus
-        ? systems.map((s) => (s.id === justDoneId ? { ...s, status: justDoneStatus } : s))
+        ? systems.map((s) =>
+            s.id === justDoneId ? { ...s, status: justDoneStatus } : s,
+          )
         : systems;
     const nextId = findOpenSystemId(list, justDoneId ?? selected, 1);
     if (nextId) setSelected(nextId);
     setRecenterKey((k) => k + 1);
   };
 
-  const markSystem = (id: string | undefined, patch: Record<string, unknown>, status: SystemStatus) => {
+  const markSystem = (
+    id: string | undefined,
+    patch: Record<string, unknown>,
+    status: SystemStatus,
+  ) => {
     if (!id) return;
     void patchSystemStatus(id, patch).catch(() => {});
     setSystems((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
@@ -545,7 +604,6 @@ function Index() {
     },
   ];
 
-
   if (review) return <ChipReview onExit={() => setReview(false)} />;
 
   return (
@@ -576,7 +634,11 @@ function Index() {
         bottomPad={chromeless ? 120 : 168}
         drawing={tab === "annotate"}
         showAttribution={
-          tab === "map" && !solo && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed
+          tab === "map" &&
+          !solo &&
+          !welcomeOpen &&
+          !(installOpen && offerInstall) &&
+          captchaPassed
         }
         onSystemsLoaded={(next) => {
           setSystems(next);
@@ -590,14 +652,20 @@ function Index() {
         }}
       />
 
-      {!captchaPassed && <CaptchaGate onPassed={() => setCaptchaPassed(true)} />}
+      {!captchaPassed && (
+        <CaptchaGate onPassed={() => setCaptchaPassed(true)} />
+      )}
 
       {tab === "annotate" ? (
         <AnnotateView
           onExit={() => setTab("map")}
           onSaved={() => {
             const id = selected;
-            markSystem(id, { annotated: true, status: "mine", fence_status: "mine" }, "mine");
+            markSystem(
+              id,
+              { annotated: true, status: "mine", fence_status: "mine" },
+              "mine",
+            );
             registerSave();
             advanceAfterPv(id, "mine");
           }}
@@ -635,7 +703,6 @@ function Index() {
         />
       ) : null}
 
-
       {/* global, every screen: circular contribution progress, top right */}
       {!solo && (
         <div className="absolute right-4 top-[calc(var(--sat)+6px)] z-40">
@@ -664,7 +731,11 @@ function Index() {
             />
           </div>
           <div className="absolute right-4 top-[calc(var(--sat)+62px)] z-30 flex flex-col items-end gap-2">
-            <HudButton id="layers-toggle" label="Imagery and layers" onClick={() => setOverlay("imagery")}>
+            <HudButton
+              id="layers-toggle"
+              label="Imagery and layers"
+              onClick={() => setOverlay("imagery")}
+            >
               <Layers className="size-5" />
             </HudButton>
             <HudButton
@@ -685,16 +756,20 @@ function Index() {
                 <ScanSearch className="size-5" />
               </HudButton>
             )}
-            <HudButton id="solo-toggle" label="Full screen — hide all chrome" onClick={() => setSolo(true)}>
+            <HudButton
+              id="solo-toggle"
+              label="Full screen — hide all chrome"
+              onClick={() => setSolo(true)}
+            >
               <Maximize2 className="size-5" />
             </HudButton>
           </div>
         </>
       )}
 
-
-      {loupe && tab === "map" && !solo && <Loupe onClose={() => setLoupe(false)} />}
-
+      {loupe && tab === "map" && !solo && (
+        <Loupe onClose={() => setLoupe(false)} />
+      )}
 
       {/* exit full screen: the single control left in solo mode */}
       {solo && (
@@ -740,7 +815,9 @@ function Index() {
             >
               <Sparkles className="size-5 shrink-0 text-lime-foreground" />
               <span className="min-w-0 flex-1">
-                <span className="block text-[15px] font-semibold">How annotating works</span>
+                <span className="block text-[15px] font-semibold">
+                  How annotating works
+                </span>
                 <span className="block text-xs text-muted-foreground">
                   Guided tour · arrows on every control
                 </span>
@@ -755,7 +832,9 @@ function Index() {
               >
                 <Share className="size-5 shrink-0" />
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold">Add to Home Screen</span>
+                  <span className="block text-[15px] font-semibold">
+                    Add to Home Screen
+                  </span>
                   <span className="block text-xs text-muted-foreground">
                     Full-screen field mode without browser chrome
                   </span>
@@ -805,7 +884,8 @@ function Index() {
               meta={
                 statsLoading
                   ? "Loading community stats…"
-                  : welcomeStats?.people != null && welcomeStats?.annotations != null
+                  : welcomeStats?.people != null &&
+                      welcomeStats?.annotations != null
                     ? `${welcomeStats.people} people · ${welcomeStats.annotations} board points`
                     : "Community stats unavailable"
               }
@@ -874,71 +954,92 @@ function Index() {
       )}
 
       {/* Action bar — map + annotate (tabs hide on annotate; bar drops to the bottom edge) */}
-      {(tab === "map" || tab === "annotate") && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
-      <div id="action-bar" className="fixed inset-x-4 z-40" style={{ bottom: barBottom }}>
-        <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
-          <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
-            <ChevronLeft className="size-5" />
-          </HudButton>
-          {tab === "annotate" ? (
-            <button
-              type="button"
-              onClick={() => setRecenterKey((k) => k + 1)}
-              className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-sm font-semibold"
-            >
-              <span className="truncate font-mono text-xs">
-                {selectedLabel || "Current system"}
-                {selectedHa ? ` · ${selectedHa}` : ""}
-              </span>
-            </button>
-          ) : (
-            <button
-              id="fab-guided-annotation"
-              type="button"
-              onClick={() => setOverlay("systems")}
-              aria-label="Search systems"
-              className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-left"
-            >
-              <Search className="size-4 shrink-0 text-muted-foreground" />
-              <span className="truncate font-mono text-xs">
-                {`Go to #ID · ${systems.length.toLocaleString()} systems`}
-              </span>
-            </button>
-          )}
-          <HudButton label="Next system" onClick={() => stepSystem(1)}>
-            <ChevronRight className="size-5" />
-          </HudButton>
-        </div>
-      </div>
-      )}
+      {(tab === "map" || tab === "annotate") &&
+        !solo &&
+        !overlay &&
+        !welcomeOpen &&
+        !(installOpen && offerInstall) &&
+        captchaPassed && (
+          <div
+            id="action-bar"
+            className="fixed inset-x-4 z-40"
+            style={{ bottom: barBottom }}
+          >
+            <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
+              <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
+                <ChevronLeft className="size-5" />
+              </HudButton>
+              {tab === "annotate" ? (
+                <button
+                  type="button"
+                  onClick={() => setRecenterKey((k) => k + 1)}
+                  className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-sm font-semibold"
+                >
+                  <span className="truncate font-mono text-xs">
+                    {selectedLabel || "Current system"}
+                    {selectedHa ? ` · ${selectedHa}` : ""}
+                  </span>
+                </button>
+              ) : (
+                <button
+                  id="fab-guided-annotation"
+                  type="button"
+                  onClick={() => setOverlay("systems")}
+                  aria-label="Search systems"
+                  className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-left"
+                >
+                  <Search className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="truncate font-mono text-xs">
+                    {`Go to #ID · ${systems.length.toLocaleString()} systems`}
+                  </span>
+                </button>
+              )}
+              <HudButton label="Next system" onClick={() => stepSystem(1)}>
+                <ChevronRight className="size-5" />
+              </HudButton>
+            </div>
+          </div>
+        )}
 
       {/* map mode: the engaging annotate button, right above the bar's ▶ */}
-      {tab === "map" && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
-        <div className="fixed inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + var(--action-bar-height) + 0.75rem)` }}>
-          <button
-            id="fab-sample-fence"
-            type="button"
-            onClick={() => enterAnnotate()}
-            className="flex items-center gap-2 rounded-full bg-lime px-4 py-3 font-display text-[15px] font-bold text-lime-foreground tap-44"
+      {tab === "map" &&
+        !solo &&
+        !overlay &&
+        !welcomeOpen &&
+        !(installOpen && offerInstall) &&
+        captchaPassed && (
+          <div
+            className="fixed inset-x-4 z-30 flex justify-end"
+            style={{
+              bottom: `calc(${barBottom} + var(--action-bar-height) + 0.75rem)`,
+            }}
           >
-            <PenLine className="size-4" /> Annotate
-          </button>
-        </div>
-      )}
-
+            <button
+              id="fab-sample-fence"
+              type="button"
+              onClick={() => enterAnnotate()}
+              className="flex items-center gap-2 rounded-full bg-lime px-4 py-3 font-display text-[15px] font-bold text-lime-foreground tap-44"
+            >
+              <PenLine className="size-4" /> Annotate
+            </button>
+          </div>
+        )}
 
       {/* Hide under welcome/install — translucent backdrop otherwise shows clipped tab labels as fuzzy green lines */}
-      {!chromeless && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
-        <TabBar
-          value={tab}
-          onChange={(t) => {
-            if (t === "more") openMore();
-            else if (t === "annotate") enterAnnotate();
-            else setTab(t);
-          }}
-          badge={offerInstall ? 1 : 0}
-        />
-      )}
+      {!chromeless &&
+        !welcomeOpen &&
+        !(installOpen && offerInstall) &&
+        captchaPassed && (
+          <TabBar
+            value={tab}
+            onChange={(t) => {
+              if (t === "more") openMore();
+              else if (t === "annotate") enterAnnotate();
+              else setTab(t);
+            }}
+            badge={offerInstall ? 1 : 0}
+          />
+        )}
 
       {/* Guided tour — arrows + flashing on the real controls */}
       {tourOpen && (
@@ -1067,8 +1168,12 @@ function Index() {
         <div className="space-y-4 pt-1">
           <div className="flex flex-wrap gap-2">
             {selectedHa ? <StatusPill>{selectedHa}</StatusPill> : null}
-            {selectedSys ? <StatusTag status={selectedSys.status} full /> : null}
-            <StatusPill tone="neutral">{STATUS_META[selectedSys?.status ?? "open"]}</StatusPill>
+            {selectedSys ? (
+              <StatusTag status={selectedSys.status} full />
+            ) : null}
+            <StatusPill tone="neutral">
+              {STATUS_META[selectedSys?.status ?? "open"]}
+            </StatusPill>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {selectedSys
@@ -1093,7 +1198,11 @@ function Index() {
       </Sheet>
 
       {/* Imagery — basemap.de default; OSM optional ≤z14; Land DOP + Maxar */}
-      <Sheet open={overlay === "imagery"} onClose={() => setOverlay(null)} title="Imagery & layers">
+      <Sheet
+        open={overlay === "imagery"}
+        onClose={() => setOverlay(null)}
+        title="Imagery & layers"
+      >
         <div className="space-y-3 pt-1">
           <ListRow
             title="basemap.de"
@@ -1104,7 +1213,10 @@ function Index() {
             title="Maxar satellite"
             meta={imagery.maxar ? "on · replaces basemap.de" : "off (default)"}
             trailing={
-              <TogglePill on={imagery.maxar} onClick={() => setMaxarEnabled(!imagery.maxar)} />
+              <TogglePill
+                on={imagery.maxar}
+                onClick={() => setMaxarEnabled(!imagery.maxar)}
+              />
             }
           />
           <ListRow
@@ -1114,7 +1226,12 @@ function Index() {
                 ? "on · only loads at zoom ≤ 14"
                 : "off · optional overlay, max zoom 14"
             }
-            trailing={<TogglePill on={imagery.osm} onClick={() => setOsmEnabled(!imagery.osm)} />}
+            trailing={
+              <TogglePill
+                on={imagery.osm}
+                onClick={() => setOsmEnabled(!imagery.osm)}
+              />
+            }
           />
           <ListRow
             title="DOP20 · all Länder"
@@ -1140,7 +1257,10 @@ function Index() {
             {imagery.dops.map((dop) => {
               const showErr = dopErrorId === dop.id;
               return (
-                <div key={dop.id} className="rounded-2xl bg-secondary/60 px-3 py-2.5">
+                <div
+                  key={dop.id}
+                  className="rounded-2xl bg-secondary/60 px-3 py-2.5"
+                >
                   <div className="flex items-center gap-2">
                     <span
                       className={cn(
@@ -1161,7 +1281,9 @@ function Index() {
                       }
                     />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{dop.label}</p>
+                      <p className="truncate text-sm font-semibold">
+                        {dop.label}
+                      </p>
                       <p className="truncate font-mono text-[11px] text-muted-foreground">
                         {!dop.ok
                           ? "error"
@@ -1197,29 +1319,40 @@ function Index() {
             })}
             {!imagery.dops.length && (
               <p className="px-1 py-3 text-sm text-muted-foreground">
-                {imagery.ready ? "No DOP catalog entries found." : "Loading DOP catalog…"}
+                {imagery.ready
+                  ? "No DOP catalog entries found."
+                  : "Loading DOP catalog…"}
               </p>
             )}
           </div>
 
           <p className="pt-2 text-xs leading-relaxed text-muted-foreground">
-            Default: basemap.de stays visible until a covering Land DOP can paint (enabled,
-            in bounds, at that Land’s minzoom). OSM is optional and never requests tiles above
-            z14. Maxar is off unless you enable it. Green = active in view;
-            lime = enabled; red = probe error (tap ⓘ).
+            Default: basemap.de stays visible until a covering Land DOP can
+            paint (enabled, in bounds, at that Land’s minzoom). OSM is optional
+            and never requests tiles above z14. Maxar is off unless you enable
+            it. Green = active in view; lime = enabled; red = probe error (tap
+            ⓘ).
           </p>
         </div>
       </Sheet>
 
       {/* Info & contribution */}
-      <Sheet open={overlay === "info"} onClose={() => setOverlay(null)} title="Info & contribution">
+      <Sheet
+        open={overlay === "info"}
+        onClose={() => setOverlay(null)}
+        title="Info & contribution"
+      >
         <div className="space-y-4 pt-1">
           <div className="rounded-2xl bg-secondary px-4 py-3">
             {selectedLabel ? (
               <>
-                <p className="font-mono text-sm font-semibold">{selectedLabel}</p>
+                <p className="font-mono text-sm font-semibold">
+                  {selectedLabel}
+                </p>
                 <p className="mt-0.5 font-mono text-xs text-muted-foreground">
-                  {[selectedHa, zoomLabel, imageryService].filter(Boolean).join(" · ")}
+                  {[selectedHa, zoomLabel, imageryService]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
               </>
             ) : (
@@ -1235,7 +1368,8 @@ function Index() {
                 "size-2.5 rounded-full",
                 connection === "connected" && "bg-online",
                 connection === "loading" && "bg-warn animate-pulse",
-                (connection === "offline" || connection === "pending") && "bg-destructive animate-pulse",
+                (connection === "offline" || connection === "pending") &&
+                  "bg-destructive animate-pulse",
               )}
             />
             <p className="text-sm font-medium">
@@ -1267,8 +1401,9 @@ function Index() {
             <StatusLegend id="status-legend" />
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            fency builds open training data for fence detection on German DOP20 and Maxar
-            imagery. Every {REVIEW_UNLOCK} annotations unlock reviewing other contributors' work.
+            fency builds open training data for fence detection on German DOP20
+            and Maxar imagery. Every {REVIEW_UNLOCK} annotations unlock
+            reviewing other contributors' work.
           </p>
           {contactMailto ? (
             <button
@@ -1297,12 +1432,17 @@ function Index() {
               </p>
               <div className="mt-2 space-y-1.5">
                 {items.map(([icon, label, desc]) => (
-                  <div key={label} className="flex gap-3 rounded-2xl bg-secondary px-3 py-2.5">
+                  <div
+                    key={label}
+                    className="flex gap-3 rounded-2xl bg-secondary px-3 py-2.5"
+                  >
                     <span className="grid size-9 shrink-0 place-items-center rounded-full bg-card font-mono text-[13px] font-bold">
                       {icon}
                     </span>
                     <span className="min-w-0">
-                      <span className="block text-sm font-semibold">{label}</span>
+                      <span className="block text-sm font-semibold">
+                        {label}
+                      </span>
                       <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
                         {desc}
                       </span>
@@ -1329,7 +1469,6 @@ function Index() {
             </div>
           </div>
           <button
-
             type="button"
             onClick={() => {
               setOverlay(null);
@@ -1395,14 +1534,17 @@ function Index() {
         title="What is this?"
       >
         <div className="space-y-4 pt-1">
-          <p className="text-sm leading-relaxed text-card-foreground">{WHAT_IS_THIS}</p>
+          <p className="text-sm leading-relaxed text-card-foreground">
+            {WHAT_IS_THIS}
+          </p>
           <div className="rounded-2xl bg-secondary px-4 py-3">
             <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
               contact
             </p>
             <p className="mt-1 text-sm">
-              Legal or licensing advice, dataset questions, or a request to remove annotations —
-              email the maintainer privately (opens your mail app). Not posted publicly.
+              Legal or licensing advice, dataset questions, or a request to
+              remove annotations — email the maintainer privately (opens your
+              mail app). Not posted publicly.
             </p>
             {contactMailto ? (
               <button
