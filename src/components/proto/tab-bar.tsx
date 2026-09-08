@@ -1,21 +1,9 @@
 import { Map, PenLine, LayoutGrid } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 export type Tab = "map" | "annotate" | "more";
 
-const TABS: { id: Tab; label: string; Icon: typeof Map }[] = [
-  { id: "map", label: "Map", Icon: Map },
-  { id: "annotate", label: "Annotate", Icon: PenLine },
-  { id: "more", label: "More", Icon: LayoutGrid },
-];
-
-/**
- * Three bottom tabs. Hidden entirely in solo (full-screen) mode — the only
- * way back is the small exit-solo control that floats on the map.
- * Tapping the active tab toggles its surface closed.
- *
- * Review lives under More once unlocked — the middle tab stays Annotate.
- */
 export function TabBar({
   value,
   onChange,
@@ -26,12 +14,20 @@ export function TabBar({
   /** red notification bubble on the More tab (e.g. install / onboarding) */
   badge?: number;
 }) {
+  const { t } = useI18n();
+
+  const TABS = [
+    { id: "map" as Tab, label: t("tabMap"), Icon: Map },
+    { id: "annotate" as Tab, label: t("tabAnnotate"), Icon: PenLine },
+    { id: "more" as Tab, label: t("tabMore"), Icon: LayoutGrid },
+  ];
+
   return (
     <nav
       id="mobile-tab-bar"
-      className="absolute inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom,0px)]"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card"
     >
-      <ul className="grid grid-cols-3">
+      <ul className="grid h-[var(--tab-bar-inner-height)] grid-cols-3">
         {TABS.map(({ id, label, Icon }) => {
           const active = value === id;
           return (
@@ -55,12 +51,19 @@ export function TabBar({
                     {badge}
                   </span>
                 ) : null}
-                <span className="text-[11px] font-semibold tracking-wide">{label}</span>
+                <span className="text-[11px] font-semibold tracking-wide">
+                  {label}
+                </span>
               </button>
             </li>
           );
         })}
       </ul>
+      <div
+        aria-hidden
+        className="bg-card"
+        style={{ height: "env(safe-area-inset-bottom, 0px)" }}
+      />
     </nav>
   );
 }

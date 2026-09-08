@@ -340,9 +340,13 @@ function Index() {
   /** the tab bar hides in annotation, annotation and review to free vertical space */
   const chromeless = solo || tab === "annotate";
   /** the action bar stays bottom-anchored: above the tab bar, or at the very bottom edge without it */
-  const barBottom = chromeless ? "max(8px,env(safe-area-inset-bottom))" : "calc(58px + env(safe-area-inset-bottom))";
+  const barBottom = chromeless
+    ? "env(safe-area-inset-bottom, 0px)"
+    : "calc(var(--tab-bar-inner-height) + env(safe-area-inset-bottom, 0px))";
   /** Keep annotate save/exit circles just above the action bar (no dead strip). */
-  const panelOffset = chromeless ? 72 : 140;
+  const panelOffset = chromeless
+    ? "calc(var(--action-bar-height) + env(safe-area-inset-bottom, 0px) + 1rem)"
+    : "calc(var(--tab-bar-inner-height) + var(--action-bar-height) + env(safe-area-inset-bottom, 0px) + 0.75rem)";
 
 
   const registerSave = () => {
@@ -545,7 +549,7 @@ function Index() {
   if (review) return <ChipReview onExit={() => setReview(false)} />;
 
   return (
-    <main className="fixed inset-0 w-full overflow-hidden bg-card">
+    <main className="fixed inset-0 h-lvh min-h-[-webkit-fill-available] w-full overflow-hidden bg-card">
       {/* One map for map + annotate — remounting killed MapboxDraw mid-session. */}
       <MapCanvas
         focus={tab === "annotate"}
@@ -569,7 +573,7 @@ function Index() {
           setOverlay("inspect");
         }}
         recenterKey={recenterKey}
-        bottomPad={chromeless ? 72 : 140}
+        bottomPad={chromeless ? 120 : 168}
         drawing={tab === "annotate"}
         showAttribution={
           tab === "map" && !solo && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed
@@ -871,7 +875,7 @@ function Index() {
 
       {/* Action bar — map + annotate (tabs hide on annotate; bar drops to the bottom edge) */}
       {(tab === "map" || tab === "annotate") && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
-      <div id="action-bar" className="absolute inset-x-4 z-40" style={{ bottom: barBottom }}>
+      <div id="action-bar" className="fixed inset-x-4 z-40" style={{ bottom: barBottom }}>
         <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
           <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
             <ChevronLeft className="size-5" />
@@ -910,7 +914,7 @@ function Index() {
 
       {/* map mode: the engaging annotate button, right above the bar's ▶ */}
       {tab === "map" && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
-        <div className="absolute inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + 70px)` }}>
+        <div className="fixed inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + var(--action-bar-height) + 0.75rem)` }}>
           <button
             id="fab-sample-fence"
             type="button"

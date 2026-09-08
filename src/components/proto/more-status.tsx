@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { Skeleton } from "./skeleton";
 import type { DatasetStats } from "./overview";
 
@@ -17,6 +18,8 @@ export function MoreStatus({
   loading?: boolean;
   onOpenOverview: () => void;
 }) {
+  const { t } = useI18n();
+
   const total = stats?.total ?? null;
   const annotated = stats?.annotated ?? null;
   const weeklyGoal = stats?.weeklyGoal ?? 50;
@@ -65,8 +68,19 @@ export function MoreStatus({
     >
       <div className="flex items-center gap-4">
         <div className="relative grid size-[68px] shrink-0 place-items-center">
-          <svg viewBox="0 0 68 68" className="absolute inset-0 size-full -rotate-90" aria-hidden>
-            <circle cx="34" cy="34" r={r} fill="none" stroke="var(--border)" strokeWidth="5" />
+          <svg
+            viewBox="0 0 68 68"
+            className="absolute inset-0 size-full -rotate-90"
+            aria-hidden
+          >
+            <circle
+              cx="34"
+              cy="34"
+              r={r}
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth="5"
+            />
             <circle
               cx="34"
               cy="34"
@@ -77,7 +91,10 @@ export function MoreStatus({
               strokeLinecap="round"
               strokeDasharray={c}
               strokeDashoffset={c * (1 - progress)}
-              style={{ transition: "stroke-dashoffset 1100ms cubic-bezier(0.22,1,0.36,1)" }}
+              style={{
+                transition:
+                  "stroke-dashoffset 1100ms cubic-bezier(0.22,1,0.36,1)",
+              }}
             />
           </svg>
           <span className="relative text-center font-display text-lg font-bold leading-none tabular-nums">
@@ -88,23 +105,26 @@ export function MoreStatus({
         <div className="min-w-0 flex-1">
           {ready && annotated != null && total != null ? (
             <p className="text-[15px] font-semibold leading-tight">
-              {annotated} of {total.toLocaleString("en-US").replace(",", " ")} systems annotated
+              {annotated} of {total.toLocaleString("en-US").replace(",", " ")}{" "}
+              {t("systems")} {t("annotated")}
             </p>
           ) : (
             <Skeleton className="h-5 w-48 max-w-full" />
           )}
           {datasetPct != null && chipsReviewed != null ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {datasetPct}% of the dataset · {chipsReviewed} you reviewed
+              {datasetPct}% {t("boardPoints")} · {chipsReviewed} {t("reviewed")}
             </p>
           ) : (
             <Skeleton className="mt-1 h-3 w-36" />
           )}
           <div className="mt-2 flex flex-wrap gap-1.5">
-            <Tag>You: {saved} fences</Tag>
+            <Tag>
+              {t("you")} {saved} {t("fences")}
+            </Tag>
             {weeklyNow != null ? (
               <Tag>
-                Board: {weeklyNow} pts
+                {t("board")}: {weeklyNow} {t("points")}
               </Tag>
             ) : (
               <Skeleton className="h-5 w-20 rounded-full" />

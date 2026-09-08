@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trophy, Users, Flag, ShieldCheck, ChevronRight } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { StatusPill, ProgressRing } from "./primitives";
 import { Skeleton } from "./skeleton";
 import { cn } from "@/lib/utils";
@@ -32,6 +33,8 @@ export function Overview({
   onClose: () => void;
   onAnnotate: () => void;
 }) {
+  const { t } = useI18n();
+
   const total = stats?.total ?? null;
   const annotated = stats?.annotated ?? null;
   const weeklyGoal = stats?.weeklyGoal ?? 50;
@@ -68,9 +71,10 @@ export function Overview({
 
   const r = 54;
   const c = 2 * Math.PI * r;
-  const datasetPct = ready && annotated != null && total != null
-    ? Math.round((annotated / total) * 100)
-    : null;
+  const datasetPct =
+    ready && annotated != null && total != null
+      ? Math.round((annotated / total) * 100)
+      : null;
   const weeklyPct =
     weeklyNow != null ? Math.round((weeklyNow / weeklyGoal) * 100) : null;
   const reviewUnlocked = saved >= REVIEW_UNLOCK;
@@ -78,8 +82,19 @@ export function Overview({
   return (
     <div className="space-y-5 pt-1">
       <div className="relative mx-auto grid size-[148px] place-items-center">
-        <svg viewBox="0 0 128 128" className="absolute inset-0 size-full -rotate-90" aria-hidden>
-          <circle cx="64" cy="64" r={r} fill="none" stroke="var(--border)" strokeWidth="8" />
+        <svg
+          viewBox="0 0 128 128"
+          className="absolute inset-0 size-full -rotate-90"
+          aria-hidden
+        >
+          <circle
+            cx="64"
+            cy="64"
+            r={r}
+            fill="none"
+            stroke="var(--border)"
+            strokeWidth="8"
+          />
           <circle
             cx="64"
             cy="64"
@@ -90,30 +105,39 @@ export function Overview({
             strokeLinecap="round"
             strokeDasharray={c}
             strokeDashoffset={c * (1 - progress)}
-            style={{ transition: "stroke-dashoffset 1200ms cubic-bezier(0.22,1,0.36,1)" }}
+            style={{
+              transition:
+                "stroke-dashoffset 1200ms cubic-bezier(0.22,1,0.36,1)",
+            }}
           />
         </svg>
         <div className="relative text-center">
           {ready ? (
-            <p className="font-display text-4xl font-bold leading-none tabular-nums">{count}</p>
+            <p className="font-display text-4xl font-bold leading-none tabular-nums">
+              {count}
+            </p>
           ) : (
             <Skeleton className="mx-auto h-10 w-20" />
           )}
           <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            systems annotated
+            {t("systemsAnnotated")}
           </p>
         </div>
       </div>
 
       <div className="text-center">
-        <h2 className="text-2xl font-semibold leading-tight">Goal: every PV fence</h2>
+        <h2 className="text-2xl font-semibold leading-tight">
+          {t("goalPVFence")}
+        </h2>
         <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
           {ready && annotated != null && total != null && datasetPct != null ? (
             <>
               {annotated.toLocaleString("en-US")} of{" "}
-              {total.toLocaleString("en-US").replace(",", " ")} systems are done —{" "}
-              <span className="font-semibold text-foreground">{datasetPct}%</span> of the dataset.
-              Your fences help close the gap.
+              {total.toLocaleString("en-US").replace(",", " ")} {t("systems")} —{" "}
+              <span className="font-semibold text-foreground">
+                {datasetPct}%
+              </span>{" "}
+              {t("boardPoints")}.
             </>
           ) : (
             <span className="inline-flex w-full flex-col items-center gap-2">
@@ -130,10 +154,10 @@ export function Overview({
             <ProgressRing value={saved} max={REVIEW_UNLOCK} />
           </div>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            your progress
+            {t("yourProgress")}
           </p>
           <p className="text-sm font-semibold">
-            {saved} / {REVIEW_UNLOCK} to review
+            {saved} / {REVIEW_UNLOCK} {t("toReview")}
           </p>
         </div>
 
@@ -142,11 +166,11 @@ export function Overview({
             <Trophy className="size-5" />
           </div>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            leaderboard points
+            {t("leaderboardPoints")}
           </p>
           {weeklyPct != null && weeklyNow != null ? (
             <p className="text-sm font-semibold">
-              {weeklyNow} pts · goal {weeklyGoal}
+              {weeklyNow} pts · {t("goal")} {weeklyGoal}
             </p>
           ) : (
             <Skeleton className="mx-auto mt-1 h-5 w-24" />
@@ -158,7 +182,7 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <Users className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Contributors on board</span>
+            <span className="text-sm font-medium">{t("contributors")}</span>
           </div>
           {people != null && !loading ? (
             <span className="font-mono text-sm font-semibold">{people}</span>
@@ -169,10 +193,12 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <ShieldCheck className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Your reviews</span>
+            <span className="text-sm font-medium">{t("yourReviews")}</span>
           </div>
           {chipsReviewed != null && !loading ? (
-            <span className="font-mono text-sm font-semibold">{chipsReviewed}</span>
+            <span className="font-mono text-sm font-semibold">
+              {chipsReviewed}
+            </span>
           ) : (
             <Skeleton className="h-5 w-10" />
           )}
@@ -180,10 +206,14 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <Flag className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Flagged / needs changes</span>
+            <span className="text-sm font-medium">
+              {t("flaggedNeedsChanges")}
+            </span>
           </div>
           {flags != null && !loading ? (
-            <StatusPill tone={flags > 0 ? "warn" : "neutral"}>{flags}</StatusPill>
+            <StatusPill tone={flags > 0 ? "warn" : "neutral"}>
+              {flags}
+            </StatusPill>
           ) : (
             <Skeleton className="h-6 w-8 rounded-full" />
           )}
@@ -192,7 +222,7 @@ export function Overview({
 
       {reviewUnlocked && (
         <p className="text-center text-xs leading-relaxed text-muted-foreground">
-          Review is unlocked. You can now vet other contributors chips from the More list.
+          {t("reviewUnlocked")}
         </p>
       )}
 
@@ -205,14 +235,14 @@ export function Overview({
             "bg-lime text-lime-foreground",
           )}
         >
-          Add more fences <ChevronRight className="size-4" />
+          {t("addMoreFences")} <ChevronRight className="size-4" />
         </button>
         <button
           type="button"
           onClick={onClose}
           className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
         >
-          Back to map
+          {t("backToMap")}
         </button>
       </div>
     </div>

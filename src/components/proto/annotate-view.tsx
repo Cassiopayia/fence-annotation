@@ -59,7 +59,7 @@ export function AnnotateView({
   onSolo: (v: boolean) => void;
   pv: boolean;
   onPv: (v: boolean) => void;
-  bottomOffset: number;
+  bottomOffset: string | number;
   selected?: string;
   onRecenter: () => void;
   connection?: "connected" | "loading" | "offline" | "pending";

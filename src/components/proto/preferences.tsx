@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 import { Languages, Moon, Palette, Sun, SunMoon } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 export type Lang = "en" | "de";
 export type Theme = "light" | "dark" | "system";
 export type Scheme = "field" | "midnight" | "coral" | "harvest" | "voltage";
 
-export const LANGS: { id: Lang; label: string; meta: string; disabled?: boolean }[] = [
+export const LANGS: { id: Lang; label: string; meta: string }[] = [
   { id: "en", label: "English", meta: "EN" },
-  { id: "de", label: "Deutsch (soon)", meta: "DE", disabled: true },
+  { id: "de", label: "Deutsch", meta: "DE" },
 ];
 
 export const THEMES: { id: Theme; label: string; Icon: typeof Sun }[] = [
@@ -19,11 +20,31 @@ export const THEMES: { id: Theme; label: string; Icon: typeof Sun }[] = [
 
 /** Colour schemes — swatches are the palette's key hues, in order. */
 export const SCHEMES: { id: Scheme; label: string; swatches: string[] }[] = [
-  { id: "field", label: "Field", swatches: ["#1b2b22", "#c9f24d", "#e9f7e2", "#e8873c"] },
-  { id: "midnight", label: "Midnight", swatches: ["#171738", "#3423a6", "#7180b9", "#dff3e4"] },
-  { id: "coral", label: "Coral", swatches: ["#445e93", "#f93943", "#fcb0b3", "#fcecc9"] },
-  { id: "harvest", label: "Harvest", swatches: ["#233d4d", "#fe7f2d", "#fcca46", "#a1c181"] },
-  { id: "voltage", label: "Voltage", swatches: ["#2e294e", "#541388", "#d90368", "#ffd400"] },
+  {
+    id: "field",
+    label: "Field",
+    swatches: ["#1b2b22", "#c9f24d", "#e9f7e2", "#e8873c"],
+  },
+  {
+    id: "midnight",
+    label: "Midnight",
+    swatches: ["#171738", "#3423a6", "#7180b9", "#dff3e4"],
+  },
+  {
+    id: "coral",
+    label: "Coral",
+    swatches: ["#445e93", "#f93943", "#fcb0b3", "#fcecc9"],
+  },
+  {
+    id: "harvest",
+    label: "Harvest",
+    swatches: ["#233d4d", "#fe7f2d", "#fcca46", "#a1c181"],
+  },
+  {
+    id: "voltage",
+    label: "Voltage",
+    swatches: ["#2e294e", "#541388", "#d90368", "#ffd400"],
+  },
 ];
 
 /** Applies the chosen theme to <html> so every token switches at once. */
@@ -48,7 +69,6 @@ export function useThemeEffect(theme: Theme, scheme: Scheme = "voltage") {
   }, [scheme]);
 }
 
-
 function Segment<T extends string>({
   value,
   options,
@@ -56,7 +76,7 @@ function Segment<T extends string>({
   ariaLabel,
 }: {
   value: T;
-  options: { id: T; label: string; Icon?: typeof Sun; disabled?: boolean }[];
+  options: { id: T; label: string; Icon?: typeof Sun }[];
   onChange: (v: T) => void;
   ariaLabel: string;
 }) {
@@ -74,17 +94,12 @@ function Segment<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
-            disabled={o.disabled}
-            title={o.disabled ? "Not available yet" : undefined}
-            onClick={() => {
-              if (!o.disabled) onChange(o.id);
-            }}
+            onClick={() => onChange(o.id)}
             className={cn(
               "flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-colors",
               active
                 ? "bg-card text-foreground shadow-hud"
                 : "text-muted-foreground",
-              o.disabled && "cursor-not-allowed opacity-45",
             )}
           >
             {o.Icon && <o.Icon className="size-4" />}
@@ -117,6 +132,8 @@ export function Preferences({
   onScheme: (s: Scheme) => void;
   compact?: boolean;
 }) {
+  const { t } = useI18n();
+
   return (
     <section
       id="preferences"
@@ -128,30 +145,36 @@ export function Preferences({
       {!compact && (
         <div className="flex items-center gap-2">
           <Languages className="size-4 text-muted-foreground" />
-          <h2 className="text-[15px] font-semibold">Language &amp; appearance</h2>
+          <h2 className="text-[15px] font-semibold">
+            {t("languageAppearance")}
+          </h2>
         </div>
       )}
       <div className="space-y-2">
         {!compact && (
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            language
+            {t("language")}
           </p>
         )}
         <Segment
-          value={lang === "de" ? "en" : lang}
-          options={LANGS.map((l) => ({ id: l.id, label: l.label, disabled: Boolean(l.disabled) }))}
+          value={lang}
+          options={LANGS.map((l) => ({ id: l.id, label: l.label }))}
           onChange={onLang}
           ariaLabel="Language"
         />
-        <p className="text-[11px] text-muted-foreground">UI is English for now. Deutsch is not wired yet.</p>
       </div>
       <div className="space-y-2">
         {!compact && (
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            colour theme
+            {t("colourTheme")}
           </p>
         )}
-        <Segment value={theme} options={THEMES} onChange={onTheme} ariaLabel="Colour theme" />
+        <Segment
+          value={theme}
+          options={THEMES}
+          onChange={onTheme}
+          ariaLabel="Colour theme"
+        />
       </div>
 
       {/* colour scheme swatches */}
@@ -159,7 +182,7 @@ export function Preferences({
         <div className="flex items-center gap-2">
           <Palette className="size-3.5 text-muted-foreground" />
           <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-            colour scheme
+            {t("colourScheme")}
           </p>
         </div>
         <div
@@ -185,10 +208,16 @@ export function Preferences({
               >
                 <span className="grid grid-cols-2 gap-0.5 overflow-hidden rounded-md">
                   {s.swatches.map((c) => (
-                    <span key={c} className="size-3" style={{ backgroundColor: c }} />
+                    <span
+                      key={c}
+                      className="size-3"
+                      style={{ backgroundColor: c }}
+                    />
                   ))}
                 </span>
-                <span className="text-[10px] font-semibold leading-none">{s.label}</span>
+                <span className="text-[10px] font-semibold leading-none">
+                  {s.label}
+                </span>
               </button>
             );
           })}
@@ -197,9 +226,10 @@ export function Preferences({
 
       {!compact && (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Dark keeps the map readable at night; Auto follows iOS. Schemes retint the whole app —
-          Field stays the highest-contrast option for bright sunlight. Language switches labels only —
-          taxonomy values stay in the dataset schema.
+          Dark keeps the map readable at night; Auto follows iOS. Schemes retint
+          the whole app — Field stays the highest-contrast option for bright
+          sunlight. Language switches labels only — taxonomy values stay in the
+          dataset schema.
         </p>
       )}
     </section>

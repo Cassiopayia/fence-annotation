@@ -1,4 +1,14 @@
-import { AlertTriangle, Ban, Check, CheckCheck, Circle, Clock, Users, type LucideIcon } from "lucide-react";
+import {
+  AlertTriangle,
+  Ban,
+  Check,
+  CheckCheck,
+  Circle,
+  Clock,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 /**
@@ -8,7 +18,8 @@ import { cn } from "@/lib/utils";
  * distinct fill treatment (hollow / hatched / solid), so the states stay
  * readable for red-green colour vision deficiency and in bright sunlight.
  */
-export type SystemStatus = "open" | "mine" | "awaiting" | "verified" | "flagged" | "excluded";
+export type SystemStatus =
+  "open" | "mine" | "awaiting" | "verified" | "flagged" | "excluded";
 
 type Meta = {
   label: string;
@@ -152,10 +163,12 @@ export function StatusTag({
 
 /** Map legend — explain every status colour / icon. */
 export function StatusLegend({ id }: { id?: string }) {
+  const { t } = useI18n();
+
   return (
     <div id={id}>
       <p className="mb-2.5 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-        Map legend
+        {t("mapLegend")}
       </p>
       <ul className="space-y-2.5">
         {STATUS_ORDER.map((s) => (
@@ -163,7 +176,9 @@ export function StatusLegend({ id }: { id?: string }) {
             <StatusDot status={s} className="mt-0.5" />
             <div className="min-w-0">
               <p className="text-[13px] font-semibold">{STATUS[s].label}</p>
-              <p className="text-[12px] leading-snug text-muted-foreground">{STATUS[s].help}</p>
+              <p className="text-[12px] leading-snug text-muted-foreground">
+                {STATUS[s].help}
+              </p>
             </div>
           </li>
         ))}
