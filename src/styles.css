@@ -522,6 +522,16 @@
   animation: tour-flash 1.5s ease-in-out infinite;
 }
 
+/* PWA: fill home-indicator strip with tab bar background; browser: sit above Safari toolbar */
+#mobile-tab-bar {
+  bottom: 0;
+  padding-bottom: var(--sab);
+}
+html[data-display-mode="browser"] #mobile-tab-bar {
+  bottom: var(--sab);
+  padding-bottom: 0;
+}
+
 /* Keep any residual MapLibre chrome clear of the Lovable action bar */
 #map .maplibregl-ctrl-top-right {
   /* Sit under the right HUD stack (up to 5 × 44px circles + gaps). */

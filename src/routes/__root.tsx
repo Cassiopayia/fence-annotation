@@ -171,7 +171,7 @@ function RootShell({ children }: { children: ReactNode }) {
         <HeadContent />
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone,h=window.innerHeight,sab=0,sat=0,vv=window.visualViewport;if(vv&&!s){sab=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);h=Math.round(vv.height);}else if(s){sat=20;sab=20;}var r=document.documentElement;r.style.setProperty("--sat",sat+"px");r.style.setProperty("--sab",sab+"px");r.style.setProperty("--app-h",h+"px");}catch(e){}})();`,
+            __html: `(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone,h=window.innerHeight,sab=0,sat=0,vv=window.visualViewport;if(vv&&!s){sab=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);h=Math.round(vv.height);}else if(s){sat=20;sab=20;}var r=document.documentElement;r.dataset.displayMode=s?"standalone":"browser";r.style.setProperty("--sat",sat+"px");r.style.setProperty("--sab",sab+"px");r.style.setProperty("--app-h",h+"px");}catch(e){}})();`,
           }}
         />
       </head>
