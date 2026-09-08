@@ -116,6 +116,7 @@ export const MapModule = (() => {
     setSystems: (d) => mapLayers?.setSystems(d),
     setDistractionBlending: (a, inactiveOpacity) => mapLayers?.setDistractionBlending(a, inactiveOpacity),
     setPvSystemsVisible: (visible) => mapLayers?.setPvSystemsVisible(visible),
+    setAnnotateScopeFilter: (active, username) => mapLayers?.setAnnotateScopeFilter(active, username),
     setAnnotationsVisible: (visible) => mapLayers?.setAnnotationsVisible(visible),
     highlightGermanState: (idOrNames) => mapLayers?.highlightGermanState(idOrNames),
     clearGermanStateHighlight: () => mapLayers?.clearGermanStateHighlight(),

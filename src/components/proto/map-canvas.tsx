@@ -362,6 +362,26 @@ export function MapCanvas({
     }
   }, [focus, selected]);
 
+  /* Annotate: only open systems + own fences — others' work stays in map/review. */
+  useEffect(() => {
+    const me = currentUsernameOrOmit() || authorLabel();
+    let cancelled = false;
+    let tries = 0;
+    const apply = () => {
+      if (cancelled) return;
+      MapModule.setAnnotateScopeFilter?.(drawing, me);
+      tries += 1;
+      if (tries < 24 && !MapModule.getMap?.()?.getLayer?.("systems-fill")) {
+        window.setTimeout(apply, 50);
+      }
+    };
+    apply();
+    return () => {
+      cancelled = true;
+      MapModule.setAnnotateScopeFilter?.(false, me);
+    };
+  }, [drawing]);
+
   /* enter / leave draw mode once the map is ready; re-assert while drawing stays true */
   useEffect(() => {
     let tries = 0;

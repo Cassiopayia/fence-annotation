@@ -496,6 +496,73 @@ export function initMapLayers(map, draw) {
     });
   }
 
+  const SYSTEMS_BASE_FILTER = ['==', '$type', 'Polygon'];
+  const ANNOTATIONS_FILL_BASE_FILTER = ['==', '$type', 'Polygon'];
+
+  /** Annotate mode: open PV footprints + own submissions only — hide others' work. */
+  function buildAnnotateSystemsFilter() {
+    return ['all',
+      SYSTEMS_BASE_FILTER,
+      ['any',
+        ['==', ['get', 'status'], 'mine'],
+        ['==', ['get', 'status'], 'yours'],
+        ['==', ['get', 'fence_status'], 'mine'],
+        ['all',
+          ['!', ['any',
+            ['==', ['get', 'status'], 'verified'],
+            ['==', ['get', 'status'], 'awaiting'],
+            ['==', ['get', 'status'], 'pending'],
+            ['==', ['get', 'status'], 'flagged'],
+            ['==', ['get', 'status'], 'excluded'],
+            ['==', ['get', 'fence_status'], 'verified'],
+            ['==', ['get', 'fence_status'], 'awaiting'],
+            ['==', ['get', 'fence_status'], 'flagged'],
+            ['==', ['get', 'fence_status'], 'excluded'],
+          ]],
+          ['!', ['any',
+            ['==', ['get', 'annotated'], true],
+            ['==', ['to-string', ['get', 'annotated']], 'true'],
+          ]],
+        ],
+      ],
+    ];
+  }
+
+  function buildOwnAnnotationsFilter(username) {
+    const ownFlag = ['any',
+      ['==', ['get', 'is_own'], true],
+      ['==', ['to-string', ['get', 'is_own']], 'true'],
+    ];
+    if (!username) return ownFlag;
+    return ['any', ownFlag, ['==', ['get', 'author_label'], username]];
+  }
+
+  /** Limit map to annotatable systems and the user's own fences (review/map show all). */
+  function setAnnotateScopeFilter(active, username = '') {
+    const systemsFilter = active ? buildAnnotateSystemsFilter() : SYSTEMS_BASE_FILTER;
+    ['systems-fill', 'systems-line', 'systems-hit'].forEach((layerId) => {
+      if (!map.getLayer(layerId)) return;
+      try { map.setFilter(layerId, systemsFilter); } catch (_) {}
+    });
+
+    if (active) {
+      const own = buildOwnAnnotationsFilter(username);
+      if (map.getLayer('annotations-fill')) {
+        try { map.setFilter('annotations-fill', ['all', ANNOTATIONS_FILL_BASE_FILTER, own]); } catch (_) {}
+      }
+      if (map.getLayer('annotations-line')) {
+        try { map.setFilter('annotations-line', own); } catch (_) {}
+      }
+    } else {
+      if (map.getLayer('annotations-fill')) {
+        try { map.setFilter('annotations-fill', ANNOTATIONS_FILL_BASE_FILTER); } catch (_) {}
+      }
+      if (map.getLayer('annotations-line')) {
+        try { map.setFilter('annotations-line', null); } catch (_) {}
+      }
+    }
+  }
+
   function setAnnotationsVisible(visible) {
     ['annotations-fill', 'annotations-line'].forEach((layerId) => {
       if (map.getLayer(layerId)) {
@@ -624,6 +691,7 @@ export function initMapLayers(map, draw) {
     addDataLayers,
     setDistractionBlending,
     setPvSystemsVisible,
+    setAnnotateScopeFilter,
     setAnnotationsVisible,
     highlightGermanState,
     clearGermanStateHighlight,
