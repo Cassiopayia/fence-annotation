@@ -139,7 +139,7 @@ export function Preferences({
         )}
         <Segment
           value={lang === "de" ? "en" : lang}
-          options={LANGS.map((l) => ({ id: l.id, label: l.label, disabled: l.disabled }))}
+          options={LANGS.map((l) => ({ id: l.id, label: l.label, disabled: Boolean(l.disabled) }))}
           onChange={onLang}
           ariaLabel="Language"
         />

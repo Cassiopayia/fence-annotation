@@ -138,7 +138,7 @@ export function WelcomeBack({
           {(
             [
               [Users, people, "contributors"],
-              [MapPinned, systems, "new systems"],
+              [MapPinned, systems, "systems done"],
               [Flag, flags, "open flags"],
             ] as const
           ).map(([Icon, value, label], i) => (

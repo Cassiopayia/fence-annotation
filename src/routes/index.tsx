@@ -68,7 +68,6 @@ import {
   ProgressRing,
   Sheet,
   StatusPill,
-  TagChip,
   TogglePill,
 } from "@/components/proto/primitives";
 
@@ -118,94 +117,15 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
+import {
+  ONBOARDING,
+  REVIEW_UNLOCK,
+  STATUS_META,
+  WHAT_IS_THIS,
+  ringAreaHa,
+} from "./-home-copy";
+
 type Overlay = "systems" | "inspect" | "imagery" | "info" | "onboarding" | "overview" | "whatisthis" | "leaderboard" | null;
-
-/** annotations needed before reviewing other contributors' work */
-const REVIEW_UNLOCK = 10;
-
-/** demo distribution for the catalogue list */
-const CATALOG_STATUS: SystemStatus[] = [
-  "open",
-  "mine",
-  "awaiting",
-  "verified",
-  "flagged",
-  "verified",
-  "excluded",
-];
-const STATUS_META: Record<SystemStatus, string> = {
-  open: "nobody has traced this yet",
-  mine: "yours · awaiting confirmation",
-  awaiting: "annotated by someone else · awaiting review",
-  verified: "verified by 2",
-  flagged: "flagged for a second look",
-  excluded: "excluded from training",
-};
-
-/** every control, grouped by the screen it lives on */
-const ONBOARDING: [string, [string, string, string][]][] = [
-  [
-    "global — on every screen",
-    [
-      ["i", "Info pill", "Tap once for imagery (zoom + tile service), again for the selected system and its hectares, again for the full sheet."],
-      ["◍", "Progress ring", "Your contribution count. Fills up and pops on every saved fence; unlocks review at 10."],
-      ["⌕", "Action bar", "Fixed at the bottom: ◀ ▶ step through systems, the middle field searches or shows the current system."],
-      ["▭", "Tabs", "Map · Annotate · More. Hidden during annotation, annotation and review for more map."],
-    ],
-  ],
-  [
-    "map screen",
-    [
-      ["≡", "Layers", "Switch basemaps: basemap.de (default), Maxar, Land DOP WMS, OSM (≤ z14)."],
-      ["👁", "PV visibility", "Hide or show the PV outlines so you can judge the raw imagery."],
-      ["⌾", "Loupe", "Drag the magnifier anywhere; it shows a second layer (Maxar by default). Tap the label to cycle Maxar · basemap.de · OSM."],
-      ["⛶", "Full screen", "Hides all chrome. A single small control brings it back."],
-      ["✎", "Annotate", "The lime button starts guided annotation on the nearest open system."],
-    ],
-  ],
-  [
-    "annotation screen",
-    [
-      ["✛", "Recenter", "Snaps back to the current system."],
-      ["▣", "Chip frame", "Shows the export chip boundary around the system."],
-      ["↺", "Undo", "Removes the last point; long-press a vertex to delete it."],
-      ["+", "Extra fence", "Saves an additional fence that is not linked to this PV system."],
-      ["✓", "Save", "The lime tick. It wiggles once the line is closed, then advances to the next system."],
-      ["✕", "Leave", "Exits annotation without saving anything."],
-      ["◐", "Context / visibility", "Small pills that cycle: rural/urban/complex and clear/partial/occluded/none."],
-    ],
-  ],
-  [
-    "dataset chip review",
-    [
-      ["→", "Keep", "Swipe right — the chip turns green and joins the pack."],
-      ["←", "Reject", "Swipe left — the chip turns red and is dropped."],
-      ["↑↓", "Change chip", "Up for the next chip, down to go back — going back asks whether to undo the last decision."],
-      ["⚑", "Flag", "Marks the chip wrong and asks for a hard-negative reason."],
-      ["!", "Auto-flags", "Sits beside the metadata, never on the image. Tap to cycle through the open flags."],
-    ],
-  ],
-];
-
-const WHAT_IS_THIS =
-  "This Web-app was designed as a first step of my thesis to create a dataset large enough to train an Convulational Network on fences arround solar-systems in Germany. While i will not be able to ensure to review all data that may come in here and add it to my thesis for training (than I would have to discuss about inter rator reliability, I may use this app data to validate my models after training). Im yet not quite sure of the legality of this use case here, if you have any reccomendations on how to publish my own datasets that would be based on German dop20 data pls let me know. until then only a geojson of the annotations will be downloadable.";
-
-/** Rough polygon area in hectares from a lon/lat ring (WGS84). */
-function ringAreaHa(ring: [number, number][]): string | undefined {
-  if (!ring || ring.length < 3) return undefined;
-  let sum = 0;
-  for (let i = 0; i < ring.length - 1; i++) {
-    const [x1, y1] = ring[i]!;
-    const [x2, y2] = ring[i + 1]!;
-    sum += x1 * y2 - x2 * y1;
-  }
-  const deg2 = Math.abs(sum) / 2;
-  const lat = ring.reduce((s, p) => s + p[1], 0) / ring.length;
-  const m2 = deg2 * 111_320 * (111_320 * Math.cos((lat * Math.PI) / 180));
-  const ha = m2 / 10_000;
-  if (!Number.isFinite(ha) || ha <= 0) return undefined;
-  return `${ha < 10 ? ha.toFixed(1) : Math.round(ha)} ha`;
-}
 
 function Index() {
   const [tab, setTab] = useState<Tab>("map");
@@ -448,6 +368,14 @@ function Index() {
     setSystems((prev) => prev.map((s) => (s.id === id ? { ...s, status } : s)));
   };
 
+  const markWelcomeSeen = () => {
+    try {
+      localStorage.setItem("zaun.welcome.seen", "1");
+    } catch {
+      /* ignore */
+    }
+  };
+
   const openMore = () => {
     // tapping More while it is open closes it again
     setTab((t) => (t === "more" ? "map" : "more"));
@@ -566,8 +494,8 @@ function Index() {
     {
       screen: "annotation",
       target: "#annotate-recenter",
-      title: "Recenter and chip frame",
-      body: "Snap back to the current system, and show the 512 px export chip boundary around it.",
+      title: "Recenter",
+      body: "Snap back to the current system when you pan away while tracing.",
       enter: () => resetChrome("annotate"),
     },
     {
@@ -602,7 +530,7 @@ function Index() {
       screen: "more",
       target: "#more-status",
       title: "More opens with your status",
-      body: "Dataset progress, chips reviewed and the weekly community goal. Tap it for the full overview.",
+      body: "Dataset progress, chips you reviewed, and community board points. Tap it for the full overview.",
       enter: () => resetChrome("more"),
     },
     {
@@ -775,6 +703,331 @@ function Index() {
           <Minimize2 className="size-5" />
         </button>
       )}
+
+      {/* More — full-height surface with its own close control */}
+      {tab === "more" && (
+        <div className="absolute inset-x-0 bottom-0 top-24 z-30 overflow-y-auto rounded-t-[28px] bg-card px-5 pt-4 pb-[calc(72px+env(safe-area-inset-bottom))] shadow-sheet">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-semibold">More</h1>
+            <button
+              type="button"
+              onClick={() => setTab("map")}
+              aria-label="Close more"
+              className="grid size-9 place-items-center rounded-full bg-secondary"
+            >
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <MoreStatus
+              saved={saved}
+              stats={datasetStats}
+              loading={statsLoading}
+              onOpenOverview={() => setOverlay("overview")}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                setTab("map");
+                setTourOpen(true);
+              }}
+              className="flex w-full items-center gap-3 rounded-2xl bg-lime-soft px-4 py-3 text-left"
+            >
+              <Sparkles className="size-5 shrink-0 text-lime-foreground" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-[15px] font-semibold">How annotating works</span>
+                <span className="block text-xs text-muted-foreground">
+                  Guided tour · arrows on every control
+                </span>
+              </span>
+            </button>
+
+            {offerInstall && (
+              <button
+                type="button"
+                onClick={() => setInstallOpen(true)}
+                className="flex w-full items-center gap-3 rounded-2xl border border-border px-4 py-3 text-left"
+              >
+                <Share className="size-5 shrink-0" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[15px] font-semibold">Add to Home Screen</span>
+                  <span className="block text-xs text-muted-foreground">
+                    Full-screen field mode without browser chrome
+                  </span>
+                </span>
+                <span className="grid size-5 shrink-0 place-items-center rounded-full bg-destructive font-mono text-[10px] font-bold text-destructive-foreground">
+                  1
+                </span>
+              </button>
+            )}
+          </div>
+
+          <div className="mt-3">
+            <ListRow
+              title="Systems catalog"
+              meta={
+                statsLoading || !datasetStats?.total
+                  ? "Loading catalog…"
+                  : `${datasetStats.total.toLocaleString("en-US").replace(",", " ")} systems · ${datasetStats.annotated ?? 0} annotated`
+              }
+              onClick={() => setOverlay("systems")}
+              trailing={<ListTree className="size-5" />}
+            />
+            <ListRow
+              title="Review annotations"
+              meta={
+                unlocked
+                  ? "Vote keep / reject on saved fences"
+                  : `Unlocks after ${REVIEW_UNLOCK} annotations · ${saved}/${REVIEW_UNLOCK}`
+              }
+              onClick={() => unlocked && setReview(true)}
+              trailing={
+                unlocked ? (
+                  <ShieldCheck className="size-5" />
+                ) : (
+                  <Lock className="size-5 text-muted-foreground" />
+                )
+              }
+            />
+            <ListRow
+              title="Imagery & layers"
+              meta="basemap.de · Land DOP · Maxar · OSM≤z14"
+              onClick={() => setOverlay("imagery")}
+              trailing={<Layers className="size-5" />}
+            />
+            <ListRow
+              title="Community snapshot"
+              meta={
+                statsLoading
+                  ? "Loading community stats…"
+                  : welcomeStats?.people != null && welcomeStats?.annotations != null
+                    ? `${welcomeStats.people} people · ${welcomeStats.annotations} board points`
+                    : "Community stats unavailable"
+              }
+              onClick={() => setWelcomeOpen(true)}
+              trailing={<Sparkles className="size-5" />}
+            />
+            <ListRow
+              title="What is this?"
+              meta="Thesis, dataset and legal notes"
+              onClick={() => setOverlay("whatisthis")}
+              trailing={<HelpCircle className="size-5" />}
+            />
+            <ListRow
+              title="Info & contribution"
+              meta={`${saved} fences saved · connection ${connection}`}
+              onClick={() => setOverlay("info")}
+              trailing={<Info className="size-5" />}
+            />
+            <ListRow
+              title="Leaderboard"
+              meta="Verified fences · guest annotations"
+              onClick={() => setOverlay("leaderboard")}
+              trailing={<Trophy className="size-5" />}
+            />
+            <ListRow
+              title="Control reference"
+              meta="Optional · every button listed"
+              onClick={() => setOverlay("onboarding")}
+              trailing={<HelpCircle className="size-5" />}
+            />
+            <ListRow
+              title="Export GeoJSON"
+              meta="Coming later — download stays a stub for now"
+              trailing={<Lock className="size-5 text-muted-foreground" />}
+            />
+            {bugReportUrl ? (
+              <ListRow
+                title="Report bug"
+                meta="Opens a GitHub issue"
+                variant="destructive"
+                onClick={reportBug}
+                trailing={<Bug className="size-5" />}
+              />
+            ) : null}
+            {contactMailto ? (
+              <ListRow
+                title="Contact / removal"
+                meta="Private email — not a public GitHub issue"
+                onClick={openContact}
+                trailing={<HelpCircle className="size-5" />}
+              />
+            ) : null}
+          </div>
+
+          <div className="mt-4">
+            <Preferences
+              lang={lang}
+              theme={theme}
+              scheme={scheme}
+              onLang={setLang}
+              onTheme={setTheme}
+              onScheme={setScheme}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Action bar — map + annotate (tabs hide on annotate; bar drops to the bottom edge) */}
+      {(tab === "map" || tab === "annotate") && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
+      <div id="action-bar" className="absolute inset-x-4 z-40" style={{ bottom: barBottom }}>
+        <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
+          <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
+            <ChevronLeft className="size-5" />
+          </HudButton>
+          {tab === "annotate" ? (
+            <button
+              type="button"
+              onClick={() => setRecenterKey((k) => k + 1)}
+              className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-sm font-semibold"
+            >
+              <span className="truncate font-mono text-xs">
+                {selectedLabel || "Current system"}
+                {selectedHa ? ` · ${selectedHa}` : ""}
+              </span>
+            </button>
+          ) : (
+            <button
+              id="fab-guided-annotation"
+              type="button"
+              onClick={() => setOverlay("systems")}
+              aria-label="Search systems"
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-left"
+            >
+              <Search className="size-4 shrink-0 text-muted-foreground" />
+              <span className="truncate font-mono text-xs">
+                {`Go to #ID · ${systems.length.toLocaleString()} systems`}
+              </span>
+            </button>
+          )}
+          <HudButton label="Next system" onClick={() => stepSystem(1)}>
+            <ChevronRight className="size-5" />
+          </HudButton>
+        </div>
+      </div>
+      )}
+
+      {/* map mode: the engaging annotate button, right above the bar's ▶ */}
+      {tab === "map" && !solo && !overlay && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
+        <div className="absolute inset-x-4 z-30 flex justify-end" style={{ bottom: `calc(${barBottom} + 70px)` }}>
+          <button
+            id="fab-sample-fence"
+            type="button"
+            onClick={() => enterAnnotate()}
+            className="flex items-center gap-2 rounded-full bg-lime px-4 py-3 font-display text-[15px] font-bold text-lime-foreground tap-44"
+          >
+            <PenLine className="size-4" /> Annotate
+          </button>
+        </div>
+      )}
+
+
+      {/* Hide under welcome/install — translucent backdrop otherwise shows clipped tab labels as fuzzy green lines */}
+      {!chromeless && !welcomeOpen && !(installOpen && offerInstall) && captchaPassed && (
+        <TabBar
+          value={tab}
+          onChange={(t) => {
+            if (t === "more") openMore();
+            else if (t === "annotate") enterAnnotate();
+            else setTab(t);
+          }}
+          badge={offerInstall ? 1 : 0}
+        />
+      )}
+
+      {/* Guided tour — arrows + flashing on the real controls */}
+      {tourOpen && (
+        <Tour
+          steps={tourSteps}
+          onClose={() => {
+            setTourOpen(false);
+            resetChrome("map");
+          }}
+          onFinish={() => {
+            setTourOpen(false);
+            setWelcomeOpen(false);
+            setOverlay(null);
+            setSolo(false);
+            enterAnnotate();
+          }}
+        />
+      )}
+
+      {/* Greeting — what the community added while you were away */}
+      {captchaPassed && welcomeOpen && (
+        <WelcomeBack
+          onClose={() => {
+            markWelcomeSeen();
+            setWelcomeOpen(false);
+            if (offerInstall) setInstallOpen(true);
+          }}
+          onStart={() => {
+            markWelcomeSeen();
+            setWelcomeOpen(false);
+            enterAnnotate();
+          }}
+          stats={welcomeStats}
+          loading={statsLoading}
+          onOpenLeaderboard={() => {
+            markWelcomeSeen();
+            setWelcomeOpen(false);
+            setOverlay("leaderboard");
+          }}
+        />
+      )}
+
+      {/* Browser-only — hidden when already installed as PWA / standalone */}
+      {offerInstall && !welcomeOpen && !tourOpen && (
+        <InstallPrompt
+          open={installOpen}
+          onClose={() => setInstallOpen(false)}
+          onDone={() => setInstallOpen(false)}
+        />
+      )}
+
+      {/* Systems catalog — same bottom sheet treatment as every other surface */}
+      <Sheet
+        id="systems-sheet"
+        open={overlay === "systems"}
+        onClose={() => {
+          setOverlay(null);
+          setSystemQuery("");
+        }}
+        title="Systems"
+      >
+        <div className="sticky top-0 -mx-5 bg-card px-5 pb-3">
+          <label className="flex items-center gap-2 rounded-full bg-secondary px-4 py-3">
+            <Search className="size-4 text-muted-foreground" />
+            <input
+              value={systemQuery}
+              onChange={(e) => setSystemQuery(e.target.value)}
+              autoFocus
+              className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
+              placeholder="Search by #ID or status"
+              aria-label="Search systems by ID or status"
+            />
+          </label>
+        </div>
+        <div className="mb-4 rounded-2xl bg-secondary px-4 py-3">
+          <StatusLegend id="systems-map-legend" />
+        </div>
+        {(() => {
+          const q = systemQuery.trim().toLowerCase();
+          // Default list: open systems first so annotate targets stay clear.
+          const ranked = [...systems].sort((a, b) => {
+            const ao = isOpenForAnnotate(a) ? 0 : 1;
+            const bo = isOpenForAnnotate(b) ? 0 : 1;
+            return ao - bo;
+          });
+          const filtered = !q
+            ? ranked.filter((s) => isOpenForAnnotate(s)).slice(0, 80)
+            : ranked
+                .filter((s) => {
+                  const meta = STATUS_META[s.status] ?? "";
+                  const hay = `${s.id} ${s.status} ${meta}`.toLowerCase();
+                  return hay.includes(q) || s.id === q.replace(/^#/, "");
+                })
                 .slice(0, 80);
           if (!filtered.length) {
             return (
@@ -991,32 +1244,21 @@ function Index() {
                     : "Offline — saves stay on this device until online"}
             </p>
           </div>
-          <div className="grid grid-cols-3 gap-2 font-mono text-xs">
-            <div className="rounded-2xl bg-secondary px-3 py-3">
-              <p className="text-muted-foreground">fences</p>
-              {savedReady ? (
-                <p className="mt-1 text-sm font-semibold">{saved}</p>
-              ) : (
-                <Skeleton className="mt-1 h-5 w-8" />
-              )}
-            </div>
-            <div className="rounded-2xl bg-secondary px-3 py-3">
-              <p className="text-muted-foreground">systems</p>
-              {!statsLoading && datasetStats?.total != null ? (
-                <p className="mt-1 text-sm font-semibold">{datasetStats.total}</p>
-              ) : (
-                <Skeleton className="mt-1 h-5 w-10" />
-              )}
-            </div>
-            <div className="rounded-2xl bg-secondary px-3 py-3">
-              <p className="text-muted-foreground">board</p>
-              {!boardLoading && board != null ? (
-                <p className="mt-1 text-sm font-semibold">{board.length}</p>
-              ) : (
-                <Skeleton className="mt-1 h-5 w-8" />
-              )}
-            </div>
+          <div className="rounded-2xl bg-secondary px-4 py-3 font-mono text-xs">
+            <p className="text-muted-foreground">your fences</p>
+            {savedReady ? (
+              <p className="mt-1 text-sm font-semibold">{saved}</p>
+            ) : (
+              <Skeleton className="mt-1 h-5 w-8" />
+            )}
           </div>
+          <button
+            type="button"
+            onClick={() => setOverlay("overview")}
+            className="h-11 w-full rounded-full bg-secondary text-sm font-semibold"
+          >
+            Dataset overview
+          </button>
           <div className="rounded-2xl bg-secondary px-4 py-4">
             <StatusLegend id="status-legend" />
           </div>

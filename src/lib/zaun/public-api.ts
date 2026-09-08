@@ -445,16 +445,87 @@ export function backendMode() {
   return supabaseConfigured() ? 'supabase' : 'local';
 }
 
+let systemsCatalogPromise = null;
+let systemsCatalogCache = null;
+let remoteSystemFlagsPromise = null;
+let remoteSystemFlagsCache = null;
+
+/** Soft-read shared skip/flag statuses (local-only when RPC unavailable). */
+async function loadRemoteSystemFlags() {
+  if (remoteSystemFlagsCache) return remoteSystemFlagsCache;
+  if (remoteSystemFlagsPromise) return remoteSystemFlagsPromise;
+  const sb = getSupabase();
+  if (!sb) {
+    remoteSystemFlagsCache = {};
+    return remoteSystemFlagsCache;
+  }
+  remoteSystemFlagsPromise = (async () => {
+    try {
+      return await withSupabaseReach(async () => {
+        const { data, error } = await sb.rpc('get_system_flags', { p_limit: 20000 });
+        if (error) throw error;
+        const map = data && typeof data === 'object' && !Array.isArray(data) ? data : {};
+        remoteSystemFlagsCache = map;
+        return map;
+      });
+    } catch (_) {
+      remoteSystemFlagsCache = {};
+      return remoteSystemFlagsCache;
+    } finally {
+      remoteSystemFlagsPromise = null;
+    }
+  })();
+  return remoteSystemFlagsPromise;
+}
+
+/** Single in-flight / cached load of the large PV catalog (Index + MapCanvas share it). */
 export async function listSystems() {
-  const res = await fetch(assetUrl('data/pv_systems.geojson'));
-  if (!res.ok) throw new Error(`PV catalog HTTP ${res.status}`);
-  const data = await res.json();
-  const statuses = readJson(SYS_KEY, {});
+  if (systemsCatalogCache) {
+    const flags = await loadRemoteSystemFlags();
+    return applySystemStatuses(structuredClone(systemsCatalogCache), flags);
+  }
+  if (!systemsCatalogPromise) {
+    systemsCatalogPromise = (async () => {
+      const res = await fetch(assetUrl('data/pv_systems.geojson'));
+      if (!res.ok) throw new Error(`PV catalog HTTP ${res.status}`);
+      const data = await res.json();
+      systemsCatalogCache = data;
+      return data;
+    })().catch((err) => {
+      systemsCatalogPromise = null;
+      throw err;
+    });
+  }
+  const [data, flags] = await Promise.all([systemsCatalogPromise, loadRemoteSystemFlags()]);
+  return applySystemStatuses(structuredClone(data), flags);
+}
+
+function applySystemStatuses(data, remoteFlags = {}) {
+  const local = readJson(SYS_KEY, {});
   for (const feature of data.features || []) {
     const id = String(feature.properties?.area_id ?? feature.properties?.footprint_id ?? feature.id);
-    if (statuses[id]) Object.assign(feature.properties || (feature.properties = {}), statuses[id]);
+    const remote = remoteFlags?.[id];
+    const props = feature.properties || (feature.properties = {});
+    // Remote shared flags first; device-local overrides (this device's skip wins).
+    if (remote && typeof remote === 'object') {
+      if (remote.status) {
+        props.status = remote.status;
+        props.fence_status = remote.status;
+      }
+      if (remote.reason != null) props.skip_reason = remote.reason;
+      if (remote.author_label) props.annotated_by = remote.author_label;
+      if (remote.annotated != null) props.annotated = remote.annotated;
+    }
+    if (local[id]) Object.assign(props, local[id]);
   }
   return data;
+}
+
+export function clearSystemsCatalogCache() {
+  systemsCatalogCache = null;
+  systemsCatalogPromise = null;
+  remoteSystemFlagsCache = null;
+  remoteSystemFlagsPromise = null;
 }
 
 /**
@@ -581,11 +652,42 @@ export function applyAnnotationCoverageToSystems(systemsFc, annotationsFc) {
 }
 
 export async function patchSystemStatus(systemId, payload) {
+  const id = String(systemId);
   const statuses = readJson(SYS_KEY, {});
-  const prev = statuses[String(systemId)] || {};
-  statuses[String(systemId)] = { ...prev, ...payload };
+  const prev = statuses[id] || {};
+  const next = { ...prev, ...payload };
+  statuses[id] = next;
   writeJson(SYS_KEY, statuses);
-  return { id: String(systemId), ...statuses[String(systemId)] };
+
+  const status = String(next.status || next.fence_status || '').toLowerCase();
+  if (status === 'flagged' || status === 'excluded' || status === 'open' || status === 'awaiting' || status === 'mine' || status === 'verified') {
+    const sb = getSupabase();
+    if (sb) {
+      try {
+        await ensureAuthSession();
+        await withSupabaseReach(async () => {
+          const { error } = await sb.rpc('upsert_system_flag', {
+            p_system_id: id,
+            p_status: status,
+            p_reason: next.skip_reason != null ? String(next.skip_reason) : null,
+          });
+          if (error) throw error;
+        });
+        if (remoteSystemFlagsCache && typeof remoteSystemFlagsCache === 'object') {
+          remoteSystemFlagsCache[id] = {
+            status,
+            reason: next.skip_reason ?? null,
+            author_label: next.annotated_by || authorLabel(),
+            annotated: status === 'flagged' || status === 'excluded' || status === 'awaiting' || status === 'mine' || status === 'verified',
+          };
+        }
+      } catch (_) {
+        // Local status still applied; sync can retry on later loads.
+      }
+    }
+  }
+
+  return { id, ...next };
 }
 
 export async function listAnnotations(bounds = WORLD_BOUNDS) {
