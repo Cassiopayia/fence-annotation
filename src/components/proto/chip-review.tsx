@@ -636,7 +636,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
 
   return (
     <div id="dataset-review-shell" className="fixed inset-0 z-[60] flex flex-col bg-background text-foreground">
-      <div className="flex items-center justify-between gap-3 px-4 pt-[max(6px,env(safe-area-inset-top))] pb-2">
+      <div className="flex items-center justify-between gap-3 px-4 pt-[calc(var(--sat)+6px)] pb-2">
         <button
           type="button"
           onClick={() => setFlagMode((m) => (m + 1) % (FLAGS.length + 1))}
@@ -758,7 +758,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         <p className="px-4 pt-2 text-center text-xs font-medium text-destructive">{error}</p>
       )}
 
-      <div className="space-y-3 px-4 pt-3 pb-[max(14px,env(safe-area-inset-bottom))]">
+      <div className="space-y-3 px-4 pt-3 pb-[calc(var(--sab)+14px)]">
         <div className="flex items-center justify-center gap-2 sm:gap-3">
           <button
             type="button"
@@ -800,7 +800,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
 
       {undoAsk && (
         <div className="absolute inset-0 z-10 flex flex-col justify-end bg-primary/45">
-          <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[max(20px,env(safe-area-inset-bottom))] text-card-foreground shadow-sheet">
+          <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[calc(var(--sab)+20px)] text-card-foreground shadow-sheet">
             <h2 className="text-lg font-semibold">Go back one annotation?</h2>
             <p className="text-sm text-muted-foreground">
               {done.length
@@ -853,7 +853,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
 
       {flagOpen && (
         <div className="absolute inset-0 z-10 flex flex-col justify-end bg-primary/45">
-          <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[max(20px,env(safe-area-inset-bottom))] text-card-foreground shadow-sheet">
+          <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[calc(var(--sab)+20px)] text-card-foreground shadow-sheet">
             <h2 className="text-lg font-semibold">Why is this annotation wrong?</h2>
             <div className="grid gap-2">
               {NEGATIVES.map((n, i) => (

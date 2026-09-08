@@ -28,7 +28,8 @@ export function CaptchaGate({ onPassed }: { onPassed: () => void }) {
   if (!siteKey) return null;
 
   return (
-    <div className="absolute inset-0 z-[90] flex flex-col justify-end bg-primary/70 px-4 pb-[max(20px,env(safe-area-inset-bottom))]">
+    <div className="absolute inset-0 z-[90] overflow-y-auto overscroll-contain bg-primary/70 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)]">
+      <div className="flex min-h-full flex-col justify-end">
       <div className="space-y-4 rounded-[28px] bg-card p-6 text-card-foreground">
         <h2 className="font-display text-xl font-bold">Quick check</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
@@ -58,6 +59,7 @@ export function CaptchaGate({ onPassed }: { onPassed: () => void }) {
           />
         </div>
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      </div>
       </div>
     </div>
   );

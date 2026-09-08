@@ -225,7 +225,7 @@ export function AnnotateView({
     <>
       {/* per-screen tool rail — the global (i) and progress ring live above it */}
       {!solo && (
-        <div className="absolute right-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-30 flex flex-col items-end gap-2">
+        <div className="absolute right-4 top-[calc(var(--sat)+56px)] z-30 flex flex-col items-end gap-2">
           <HudButton id="annotate-recenter" label="Recenter on this system" onClick={onRecenter}>
             <Crosshair className="size-5" />
           </HudButton>
@@ -256,7 +256,7 @@ export function AnnotateView({
       )}
 
       {hint && !drawn && !solo && (
-        <div className="pointer-events-none absolute inset-x-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-30 flex justify-center">
+        <div className="pointer-events-none absolute inset-x-4 top-[calc(var(--sat)+56px)] z-30 flex justify-center">
           <p className="max-w-[20rem] rounded-2xl border border-border bg-card px-3 py-2 text-center text-[12px] font-medium">
             Tap the map to place fence points. Tap the first point again to close the ring, or save an open line with the lime tick.
             Use + for an Extra fence (not linked to this PV).
@@ -265,7 +265,7 @@ export function AnnotateView({
       )}
 
       {saveError && !solo && (
-        <div className="absolute inset-x-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-40 flex justify-center">
+        <div className="absolute inset-x-4 top-[calc(var(--sat)+56px)] z-40 flex justify-center">
           <p className="max-w-[22rem] rounded-2xl border border-destructive/40 bg-card px-3 py-2 text-center text-[12px] font-medium text-destructive">
             {saveError}
           </p>
@@ -391,7 +391,7 @@ export function AnnotateView({
       </div>
 
       {!solo && (
-        <div className="absolute left-4 top-[max(6px,env(safe-area-inset-top))] z-50">
+        <div className="absolute left-4 top-[calc(var(--sat)+6px)] z-50">
           <InfoPill
             id="annotate-info-btn"
             onClick={onInfo}

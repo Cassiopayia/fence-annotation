@@ -69,8 +69,9 @@ export function WelcomeBack({
   return (
     <div
       id="welcome-back"
-      className="absolute inset-0 z-[75] flex flex-col justify-end bg-primary/85 px-4 pb-[max(20px,env(safe-area-inset-bottom))] animate-fade-in"
+      className="absolute inset-0 z-[75] overflow-y-auto overscroll-contain bg-primary/85 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)] animate-fade-in"
     >
+      <div className="flex min-h-full flex-col justify-end">
       <div className="space-y-5 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet animate-scale-in">
         <div className="flex items-start justify-between">
           <StatusPill>
@@ -194,6 +195,7 @@ export function WelcomeBack({
             Just look at the map
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

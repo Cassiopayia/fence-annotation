@@ -13,6 +13,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { CONTENT_SECURITY_POLICY } from "../lib/security-csp";
 import { I18nProvider, useI18n } from "../i18n/context";
+import { startViewportInsets } from "../lib/viewport-insets";
 
 function NotFoundComponent() {
   const { t } = useI18n();
@@ -168,6 +169,11 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en" className="h-full bg-card">
       <head>
         <HeadContent />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var s=window.matchMedia("(display-mode: standalone)").matches||window.navigator.standalone,h=window.innerHeight,sab=0,sat=0,vv=window.visualViewport;if(vv&&!s){sab=Math.max(0,window.innerHeight-vv.height-vv.offsetTop);h=Math.round(vv.height);}else if(s){sat=20;sab=20;}var r=document.documentElement;r.style.setProperty("--sat",sat+"px");r.style.setProperty("--sab",sab+"px");r.style.setProperty("--app-h",h+"px");}catch(e){}})();`,
+          }}
+        />
       </head>
       <body className="h-full bg-card">
         <I18nProvider>{children}</I18nProvider>
@@ -180,9 +186,11 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => startViewportInsets(), []);
+
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="fixed inset-0 h-lvh min-h-[-webkit-fill-available] w-full bg-card">
+      <div className="app-shell fixed top-0 left-0 right-0 w-full overflow-hidden bg-card">
         <Outlet />
       </div>
     </QueryClientProvider>

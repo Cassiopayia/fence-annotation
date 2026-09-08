@@ -93,7 +93,8 @@ export function InstallPrompt({ open, onClose, onDone }: Props) {
   };
 
   return (
-    <div className="absolute inset-0 z-[70] flex flex-col justify-end bg-primary/60 px-4 pb-[max(20px,env(safe-area-inset-bottom))]">
+    <div className="absolute inset-0 z-[70] overflow-y-auto overscroll-contain bg-primary/60 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)]">
+      <div className="flex min-h-full flex-col justify-end">
       <div className="space-y-4 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet">
         <div className="flex items-start justify-between">
           <Share className="size-8 text-lime-foreground" />
@@ -152,6 +153,7 @@ export function InstallPrompt({ open, onClose, onDone }: Props) {
             Got it
           </button>
         )}
+      </div>
       </div>
     </div>
   );

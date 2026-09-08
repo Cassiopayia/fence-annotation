@@ -77,6 +77,9 @@
   /* Bottom chrome — tab row + home-indicator inset (PWA standalone). */
   --tab-bar-inner-height: 3.25rem;
   --action-bar-height: 3.25rem;
+  --sat: env(safe-area-inset-top, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --app-h: 100svh;
   --background: oklch(0.985 0.004 120);
   --foreground: oklch(0.19 0.015 150);
   --card: oklch(1 0 0);
@@ -362,12 +365,6 @@
   html,
   body,
   #root {
-    height: 100%;
-    min-height: 100%;
-    min-height: 100vh;
-    min-height: 100dvh;
-    min-height: 100lvh;
-    min-height: -webkit-fill-available;
     width: 100%;
     margin: 0;
     overscroll-behavior: none;
@@ -378,19 +375,20 @@
   }
 
   body {
-    /* Solid chrome — never let map bleed under the home indicator */
     background-color: var(--color-card);
     color: var(--color-foreground);
     font-family: var(--font-sans);
     -webkit-tap-highlight-color: transparent;
     overflow: hidden;
-    position: fixed;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    height: 100dvh;
-    height: 100lvh;
-    height: -webkit-fill-available;
+  }
+
+  /* Filled by viewport-insets.ts: visible height + safe areas (--sat / --sab). */
+  .app-shell {
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--app-h, 100svh);
+    max-height: var(--app-h, 100svh);
   }
 
   h1,
@@ -403,38 +401,20 @@
 
 /* Safe-area utilities (viewport-fit=cover, PWA standalone first) */
 @utility pt-safe {
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: var(--sat, env(safe-area-inset-top, 0px));
 }
 @utility pb-safe {
-  padding-bottom: constant(safe-area-inset-bottom);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: var(--sab, env(safe-area-inset-bottom, 0px));
 }
 @utility mt-safe {
-  margin-top: env(safe-area-inset-top, 0px);
+  margin-top: var(--sat, env(safe-area-inset-top, 0px));
 }
 @utility mb-safe {
-  margin-bottom: env(safe-area-inset-bottom, 0px);
+  margin-bottom: var(--sab, env(safe-area-inset-bottom, 0px));
 }
 @utility h-screen-d {
-  height: 100vh;
-  height: 100dvh;
-  height: 100lvh;
-  height: -webkit-fill-available;
-}
-
-/* iOS home-screen PWA: paint card color under the home indicator if the viewport undershoots. */
-@media (display-mode: standalone) {
-  body::after {
-    content: "";
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 35;
-    height: env(safe-area-inset-bottom, 0px);
-    background-color: var(--card);
-    pointer-events: none;
-  }
+  height: var(--app-h, 100svh);
+  max-height: var(--app-h, 100svh);
 }
 
 /* Frosted chrome used by HUD, tab bar and sheets — solid card, no blur/shadow (blur smears map tiles). */
@@ -545,7 +525,7 @@
 /* Keep any residual MapLibre chrome clear of the Lovable action bar */
 #map .maplibregl-ctrl-top-right {
   /* Sit under the right HUD stack (up to 5 × 44px circles + gaps). */
-  top: calc(max(6px, env(safe-area-inset-top, 0px)) + 56px + 252px + 12px);
+  top: calc(var(--sat, env(safe-area-inset-top, 0px)) + 56px + 252px + 12px);
   right: 16px;
   z-index: 45;
   pointer-events: auto;

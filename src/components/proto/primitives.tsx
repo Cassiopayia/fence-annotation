@@ -368,7 +368,7 @@ export function Sheet({
             </button>
           </header>
         )}
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[max(20px,env(safe-area-inset-bottom))] overscroll-contain">
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-[calc(var(--sab)+20px)] overscroll-contain">
           {children}
         </div>
       </section>

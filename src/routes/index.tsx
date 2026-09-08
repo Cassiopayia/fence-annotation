@@ -341,12 +341,12 @@ function Index() {
   const chromeless = solo || tab === "annotate";
   /** the action bar stays bottom-anchored: above the tab bar, or at the very bottom edge without it */
   const barBottom = chromeless
-    ? "env(safe-area-inset-bottom, 0px)"
-    : "calc(var(--tab-bar-inner-height) + env(safe-area-inset-bottom, 0px))";
+    ? "var(--sab)"
+    : "calc(var(--tab-bar-inner-height) + var(--sab))";
   /** Keep annotate save/exit circles just above the action bar (no dead strip). */
   const panelOffset = chromeless
-    ? "calc(var(--action-bar-height) + env(safe-area-inset-bottom, 0px) + 1rem)"
-    : "calc(var(--tab-bar-inner-height) + var(--action-bar-height) + env(safe-area-inset-bottom, 0px) + 0.75rem)";
+    ? "calc(var(--action-bar-height) + var(--sab) + 1rem)"
+    : "calc(var(--tab-bar-inner-height) + var(--action-bar-height) + var(--sab) + 0.75rem)";
 
 
   const registerSave = () => {
@@ -549,7 +549,7 @@ function Index() {
   if (review) return <ChipReview onExit={() => setReview(false)} />;
 
   return (
-    <main className="fixed inset-0 h-lvh min-h-[-webkit-fill-available] w-full overflow-hidden bg-card">
+    <main className="relative h-full w-full overflow-hidden bg-card">
       {/* One map for map + annotate — remounting killed MapboxDraw mid-session. */}
       <MapCanvas
         focus={tab === "annotate"}
@@ -638,7 +638,7 @@ function Index() {
 
       {/* global, every screen: circular contribution progress, top right */}
       {!solo && (
-        <div className="absolute right-4 top-[max(6px,env(safe-area-inset-top))] z-40">
+        <div className="absolute right-4 top-[calc(var(--sat)+6px)] z-40">
           <ProgressRing
             id="contribution-ring"
             value={saved}
@@ -652,7 +652,7 @@ function Index() {
       {/* Map screen: global (i) plus this screen's own tool rail */}
       {tab === "map" && !solo && (
         <>
-          <div className="absolute left-4 top-[max(6px,env(safe-area-inset-top))] z-50">
+          <div className="absolute left-4 top-[calc(var(--sat)+6px)] z-50">
             <InfoPill
               id="status-info-btn"
               onClick={() => setOverlay("info")}
@@ -663,7 +663,7 @@ function Index() {
               ha={selectedHa}
             />
           </div>
-          <div className="absolute right-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-30 flex flex-col items-end gap-2">
+          <div className="absolute right-4 top-[calc(var(--sat)+62px)] z-30 flex flex-col items-end gap-2">
             <HudButton id="layers-toggle" label="Imagery and layers" onClick={() => setOverlay("imagery")}>
               <Layers className="size-5" />
             </HudButton>
@@ -702,7 +702,7 @@ function Index() {
           type="button"
           onClick={() => setSolo(false)}
           aria-label="Exit full screen"
-          className="glass absolute right-4 top-[max(12px,env(safe-area-inset-top))] z-40 grid size-10 place-items-center rounded-full border border-border shadow-hud"
+          className="glass absolute right-4 top-[calc(var(--sat)+12px)] z-40 grid size-10 place-items-center rounded-full border border-border shadow-hud"
         >
           <Minimize2 className="size-5" />
         </button>
@@ -710,7 +710,7 @@ function Index() {
 
       {/* More — full-height surface with its own close control */}
       {tab === "more" && (
-        <div className="absolute inset-x-0 bottom-0 top-24 z-30 overflow-y-auto rounded-t-[28px] bg-card px-5 pt-4 pb-[calc(72px+env(safe-area-inset-bottom))] shadow-sheet">
+        <div className="absolute inset-x-0 bottom-0 top-[calc(var(--sat)+5rem)] z-30 overflow-y-auto rounded-t-[28px] bg-card px-5 pt-4 pb-[calc(var(--tab-bar-inner-height)+var(--sab)+1rem)] shadow-sheet">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-semibold">More</h1>
             <button

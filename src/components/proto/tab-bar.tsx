@@ -25,7 +25,8 @@ export function TabBar({
   return (
     <nav
       id="mobile-tab-bar"
-      className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-card"
+      className="fixed inset-x-0 z-40 border-t border-border bg-card"
+      style={{ bottom: "var(--sab)" }}
     >
       <ul className="grid h-[var(--tab-bar-inner-height)] grid-cols-3">
         {TABS.map(({ id, label, Icon }) => {
@@ -59,11 +60,6 @@ export function TabBar({
           );
         })}
       </ul>
-      <div
-        aria-hidden
-        className="bg-card"
-        style={{ height: "env(safe-area-inset-bottom, 0px)" }}
-      />
     </nav>
   );
 }
