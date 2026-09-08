@@ -6,10 +6,11 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 
 import { MapModule } from "@/lib/zaun/map";
 import { DrawModule } from "@/lib/zaun/draw";
-import { boundsFromMap, listAnnotations, listSystems, applyAnnotationCoverageToSystems, featureId } from "@/lib/zaun/public-api";
+import { boundsFromMap, listAnnotations, listSystems, applyAnnotationCoverageToSystems, featureId, filterSystemsForAnnotate } from "@/lib/zaun/public-api";
 import { loadDopCatalog } from "@/lib/zaun/wms-client";
 import { initImageryService } from "@/lib/zaun/imagery-service";
 import { authorLabel, currentUsernameOrOmit } from "@/lib/zaun/supabase-client";
+import { GUEST_AUTHOR_LABEL, displayAuthorName } from "@/lib/zaun/username";
 import type { SystemStatus } from "@/components/proto/status";
 
 export type { SystemStatus };
@@ -42,9 +43,9 @@ function statusFromProps(props: Record<string, unknown> | null | undefined): Sys
   if (raw === "mine" || raw === "yours" || props?.["mine"] === true) return "mine";
   if (raw === "awaiting" || raw === "pending") return "awaiting";
   if (raw === "annotated" || props?.["annotated"] === true) {
-    const author = String(props?.["author_label"] ?? props?.["annotated_by"] ?? "");
-    const me = currentUsernameOrOmit() || authorLabel();
-    if (author && me && author === me) return "mine";
+    const author = displayAuthorName(String(props?.["author_label"] ?? props?.["annotated_by"] ?? ""));
+    const me = displayAuthorName(currentUsernameOrOmit() || authorLabel());
+    if (me !== GUEST_AUTHOR_LABEL && author === me) return "mine";
     return "awaiting";
   }
   return "open";
@@ -124,6 +125,7 @@ export function MapCanvas({
   const systemsCatalogRef = useRef<FeatureCollection | null>(null);
   /** Accumulated annotations for PV coverage (so pan doesn't drop awaiting claims). */
   const coverageAnnRef = useRef<FeatureCollection>({ type: "FeatureCollection", features: [] });
+  const lastCoveredRef = useRef<FeatureCollection | null>(null);
   const [systems, setSystems] = useState<Sys[]>(SYSTEMS);
   const drawingRef = useRef(drawing);
   drawingRef.current = drawing;
@@ -219,11 +221,21 @@ export function MapCanvas({
       return coverageAnnRef.current;
     };
 
+    const pushSystemsToMap = (covered: FeatureCollection) => {
+      const me = currentUsernameOrOmit() || authorLabel();
+      const forMap = drawingRef.current
+        ? filterSystemsForAnnotate(covered, me)
+        : covered;
+      MapModule.setSystems(forMap);
+      MapModule.setAnnotateScopeFilter?.(drawingRef.current, me);
+    };
+
     const paintCoverage = (annFc: FeatureCollection) => {
       const catalog = systemsCatalogRef.current;
       if (!catalog) return;
       const covered = applyAnnotationCoverageToSystems(catalog, annFc);
-      MapModule.setSystems(covered);
+      lastCoveredRef.current = covered;
+      pushSystemsToMap(covered);
       const parsed = (covered.features || [])
         .map(featureToSys)
         .filter((s): s is Sys => Boolean(s));
@@ -268,7 +280,7 @@ export function MapCanvas({
     };
 
     const reloadAnnotations = () => {
-      if (cancelled || !readyRef.current) return;
+      if (cancelled || !readyRef.current || drawingRef.current) return;
       void listAnnotations(boundsFromMap(map))
         .then((fc) => {
           if (cancelled) return;
@@ -369,6 +381,12 @@ export function MapCanvas({
     let tries = 0;
     const apply = () => {
       if (cancelled) return;
+      if (lastCoveredRef.current) {
+        const forMap = drawing
+          ? filterSystemsForAnnotate(lastCoveredRef.current, me)
+          : lastCoveredRef.current;
+        MapModule.setSystems(forMap);
+      }
       MapModule.setAnnotateScopeFilter?.(drawing, me);
       tries += 1;
       if (tries < 24 && !MapModule.getMap?.()?.getLayer?.("systems-fill")) {
@@ -393,15 +411,22 @@ export function MapCanvas({
       return true;
     };
     if (arm() && drawing) {
-      // Keep re-arming briefly so Strict Mode / late Draw init cannot leave OVERVIEW.
       const keep = window.setInterval(() => {
         tries += 1;
-        if (!alive || !drawing || tries > 20) {
+        if (!alive || !drawing || tries > 12) {
           window.clearInterval(keep);
           return;
         }
+        try {
+          if (MapModule.getDraw?.()?.getMode?.() === "draw_line_string") {
+            window.clearInterval(keep);
+            return;
+          }
+        } catch {
+          /* ignore */
+        }
         DrawModule.setActiveState("ANNOTATION");
-      }, 200);
+      }, 100);
       return () => {
         alive = false;
         window.clearInterval(keep);

@@ -8,7 +8,7 @@ import type { StyleSpecification } from "maplibre-gl";
 import { HudButton, ProgressRing, StatusPill } from "./primitives";
 import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
-import { featureId, forgetLocalReview, listAnnotations, verifyAnnotation } from "@/lib/zaun/public-api";
+import { featureId, forgetLocalReview, hasLocalReviewDecision, listAnnotations, verifyAnnotation } from "@/lib/zaun/public-api";
 import { authorLabel, currentUsernameOrOmit, ensureAuthSession } from "@/lib/zaun/supabase-client";
 import { GUEST_AUTHOR_LABEL, displayAuthorName } from "@/lib/zaun/username";
 
@@ -224,6 +224,10 @@ function classifyReviewPool(fc: FeatureCollection) {
       voted += 1;
       continue;
     }
+    if (hasLocalReviewDecision(id)) {
+      voted += 1;
+      continue;
+    }
     const review = String(props["review_status"] || "").toLowerCase();
     if (review === "verified" || props["is_public"] === true || props["is_public"] === "true") {
       verified += 1;
@@ -250,6 +254,7 @@ function toItems(fc: FeatureCollection): ReviewItem[] {
         if (author === meName) return null;
       }
       if (String(props["my_decision"] || "").trim()) return null;
+      if (hasLocalReviewDecision(id)) return null;
       const review = String(props["review_status"] || "").toLowerCase();
       if (review === "verified" || props["is_public"] === true || props["is_public"] === "true") {
         return null;

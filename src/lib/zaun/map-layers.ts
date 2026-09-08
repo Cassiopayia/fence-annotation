@@ -512,10 +512,12 @@ export function initMapLayers(map, draw) {
             ['==', ['get', 'status'], 'verified'],
             ['==', ['get', 'status'], 'awaiting'],
             ['==', ['get', 'status'], 'pending'],
+            ['==', ['get', 'status'], 'annotated'],
             ['==', ['get', 'status'], 'flagged'],
             ['==', ['get', 'status'], 'excluded'],
             ['==', ['get', 'fence_status'], 'verified'],
             ['==', ['get', 'fence_status'], 'awaiting'],
+            ['==', ['get', 'fence_status'], 'annotated'],
             ['==', ['get', 'fence_status'], 'flagged'],
             ['==', ['get', 'fence_status'], 'excluded'],
           ]],
@@ -533,7 +535,9 @@ export function initMapLayers(map, draw) {
       ['==', ['get', 'is_own'], true],
       ['==', ['to-string', ['get', 'is_own']], 'true'],
     ];
-    if (!username) return ownFlag;
+    const named = username
+      && String(username).trim().toLowerCase() !== 'guest';
+    if (!named) return ownFlag;
     return ['any', ownFlag, ['==', ['get', 'author_label'], username]];
   }
 

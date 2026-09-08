@@ -236,6 +236,25 @@ export const DrawModule = (() => {
   const SNAP_QUERY_PAD = 16;
   let ignoreResumeUntil = 0;
 
+  function isCoarsePointer() {
+    try {
+      return typeof window !== 'undefined'
+        && typeof window.matchMedia === 'function'
+        && window.matchMedia('(pointer: coarse)').matches;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /** Run merge/coalesce off the tap critical path (mobile feels instant). */
+  function deferHeavyDrawWork(fn) {
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(fn, { timeout: 800 });
+    } else {
+      setTimeout(fn, 32);
+    }
+  }
+
   function init(mapInstance, drawInstance, snapRenderer = {}) {
     map = mapInstance;
     draw = drawInstance;
@@ -1264,6 +1283,8 @@ export const DrawModule = (() => {
   function findSnapTarget(point, mouseLngLat, currentFeature = null, mode = 'commit') {
     const candidates = [];
     const isHover = mode === 'hover';
+    // Phone/tablet: skip turf intersections + fill queries on tap — vertex snap only.
+    const isFast = isHover || (mode === 'commit' && isCoarsePointer());
 
     if (currentFeature?.geometry?.type === 'LineString') {
       const coords = currentFeature.geometry.coordinates || [];
@@ -1289,14 +1310,14 @@ export const DrawModule = (() => {
       });
     }
 
-    // Hover: outline + vertices only. Commit: fills/edges + intersection math.
+    // Hover / mobile tap: outline + vertices only. Desktop commit: fills/edges + intersections.
     const layerSnap = nearestLayerGeometrySnap(point, mouseLngLat, {
-      includeFill: !isHover,
-      includeEdges: !isHover,
+      includeFill: !isFast,
+      includeEdges: !isFast,
     }) || {};
     if (layerSnap.vertex) candidates.push({ coord: layerSnap.vertex, priority: 2 });
 
-    if (!isHover) {
+    if (!isFast) {
       const intersection = nearestIntersectionSnap(point, mouseLngLat, currentFeature);
       if (intersection) candidates.push({ coord: intersection, priority: 3 });
       if (layerSnap.edge) candidates.push({ coord: layerSnap.edge, priority: 4 });
@@ -1335,9 +1356,12 @@ export const DrawModule = (() => {
 
     const feats = draw.getAll()?.features || [];
     const feat = feats[feats.length - 1];
-    if (feat) tryMergeOtherFeatureAtPoint(feat, snapCoord);
-    // Exact copy of the docked coord, then collapse any leftover near-miss twins.
-    coalesceNearbyDrawVertices();
+    const finish = () => {
+      if (feat) tryMergeOtherFeatureAtPoint(feat, snapCoord);
+      coalesceNearbyDrawVertices();
+    };
+    if (isCoarsePointer()) deferHeavyDrawWork(finish);
+    else finish();
     return true;
   }
 
@@ -1591,6 +1615,8 @@ export const DrawModule = (() => {
     };
 
     const handleSnapPointer = (e) => {
+      // Touch devices have no hover — skip move-time snap work while panning.
+      if (isCoarsePointer()) return;
       if (!isAnnotationDrawing()) {
         if (lastSnapKey) {
           lastSnapKey = '';
@@ -1623,12 +1649,14 @@ export const DrawModule = (() => {
               selectFinishedFeatures([feat.id]);
               updateClosureBadge(true);
               hideSnapTarget();
-              coalesceNearbyDrawVertices();
+              if (isCoarsePointer()) deferHeavyDrawWork(() => coalesceNearbyDrawVertices());
+              else coalesceNearbyDrawVertices();
             }
             return;
           }
 
           if (snap?.coord) applySnapResult(snap);
+          else if (isCoarsePointer()) deferHeavyDrawWork(() => coalesceNearbyDrawVertices());
           else coalesceNearbyDrawVertices();
           if (!isAnnotationDrawing() && !draw.getAll().features.length) return;
           const closed = checkClosure();
@@ -1724,13 +1752,14 @@ export const DrawModule = (() => {
     });
 
     map.on('draw.create', (event) => {
-      // Stamp Extra/PV before merge so connected lines of different kinds stay separate.
       stampCreatedFeaturesExtra(event?.features || []);
-      coalesceNearbyDrawVertices();
-      // Finish gesture (click last point) → keep selection, do NOT spawn a new point.
+      const coalesce = () => coalesceNearbyDrawVertices();
+      if (isCoarsePointer()) deferHeavyDrawWork(coalesce);
+      else coalesce();
       ignoreResumeUntil = Date.now() + 400;
       setTimeout(() => {
-        coalesceNearbyDrawVertices();
+        if (isCoarsePointer()) deferHeavyDrawWork(coalesce);
+        else coalesce();
         const createdIds = (event?.features || []).map((f) => f.id).filter((id) => id != null);
         const fallbackId = draw.getAll().features.at(-1)?.id;
         selectFinishedFeatures(createdIds.length ? createdIds : (fallbackId != null ? [fallbackId] : []));

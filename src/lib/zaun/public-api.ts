@@ -144,6 +144,47 @@ function readOwnedIds() {
   return new Set((Array.isArray(raw) ? raw : []).map(String).filter(Boolean));
 }
 
+/** True when this device already voted on an annotation (local memory). */
+export function hasLocalReviewDecision(annotationId) {
+  const id = String(annotationId || '');
+  if (!id) return false;
+  if (readReviewedIds().has(id)) return true;
+  const local = localDecisionMap().get(id);
+  return Boolean(String(local?.mine || '').trim());
+}
+
+function annotationAuthoredByMe(props, meLabel) {
+  if (props?.is_own === true || props?.is_own === 'true') return true;
+  const owned = readOwnedIds();
+  const fid = String(props?.fence_id || props?.id || '');
+  if (fid && owned.has(fid)) return true;
+  const author = displayAuthorName(props?.author_label);
+  const me = displayAuthorName(meLabel);
+  if (me === GUEST_AUTHOR_LABEL || author === GUEST_AUTHOR_LABEL) return false;
+  return Boolean(author && me && author === me);
+}
+
+const ANNOTATED_SYSTEM_STATUSES = new Set([
+  'verified', 'awaiting', 'pending', 'flagged', 'excluded', 'annotated', 'confirm',
+]);
+
+/** Map display in guided annotate: open footprints + this user's claims only. */
+export function filterSystemsForAnnotate(systemsFc, meLabel = authorLabel()) {
+  if (!systemsFc?.features?.length) return systemsFc || emptyFc();
+  return {
+    type: 'FeatureCollection',
+    features: (systemsFc.features || []).filter((feature) => {
+      const props = feature?.properties || {};
+      const status = String(props.status || props.fence_status || '').toLowerCase();
+      if (status === 'mine' || status === 'yours') return true;
+      if (ANNOTATED_SYSTEM_STATUSES.has(status)) return false;
+      if (props.annotated === true || props.annotated === 'true') return false;
+      if (annotationAuthoredByMe(props, meLabel)) return true;
+      return true;
+    }),
+  };
+}
+
 export function rememberOwnedAnnotationId(annotationId) {
   const id = String(annotationId || '');
   if (!id) return;
@@ -624,7 +665,7 @@ export function applyAnnotationCoverageToSystems(systemsFc, annotationsFc) {
     const isPublic = props.is_public === true || props.is_public === 'true' || review === 'verified';
     let status = 'awaiting';
     if (isPublic || review === 'verified') status = 'verified';
-    else if (author && me && author === me) status = 'mine';
+    else if (annotationAuthoredByMe(props, me)) status = 'mine';
     else status = 'awaiting';
 
     for (const a of areaIds) consider(a, status, author);
