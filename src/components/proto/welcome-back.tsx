@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Sparkles, Users, MapPinned, Flag, X, Trophy } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { StatusPill } from "./primitives";
 import { Skeleton } from "./skeleton";
 
@@ -28,6 +29,7 @@ export function WelcomeBack({
   stats?: WelcomeStats | null;
   loading?: boolean;
 }) {
+  const { t } = useI18n();
   const people = stats?.people ?? null;
   const annotations = stats?.annotations ?? null;
   const goal = stats?.goal ?? 50;
@@ -49,10 +51,10 @@ export function WelcomeBack({
     const started = performance.now();
     let raf = 0;
     const tick = (now: number) => {
-      const t = Math.min(1, (now - started) / 1100);
-      const eased = 1 - Math.pow(1 - t, 3);
+      const tickT = Math.min(1, (now - started) / 1100);
+      const eased = 1 - Math.pow(1 - tickT, 3);
       setCount(Math.round(eased * annotations));
-      if (t < 1) raf = requestAnimationFrame(tick);
+      if (tickT < 1) raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => {
@@ -66,136 +68,142 @@ export function WelcomeBack({
   const pct =
     ready && annotations != null ? Math.round((annotations / goal) * 100) : null;
 
+  const statLabels = [
+    [Users, people, t("statContributors")],
+    [MapPinned, systems, t("statSystemsDone")],
+    [Flag, flags, t("statOpenFlags")],
+  ] as const;
+
   return (
     <div
       id="welcome-back"
       className="absolute inset-0 z-[75] overflow-y-auto overscroll-contain bg-primary/85 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)] animate-fade-in"
     >
       <div className="flex min-h-full flex-col justify-end">
-      <div className="space-y-5 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet animate-scale-in">
-        <div className="flex items-start justify-between">
-          <StatusPill>
-            <Sparkles className="size-3.5" />{" "}
-            {since ? `away ${since}` : loading ? "loading…" : "welcome"}
-          </StatusPill>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close greeting"
-            className="grid size-9 place-items-center rounded-full bg-secondary text-secondary-foreground"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-
-        <div className="relative mx-auto grid size-[136px] place-items-center">
-          <svg viewBox="0 0 128 128" className="absolute inset-0 size-full -rotate-90" aria-hidden>
-            <circle cx="64" cy="64" r={r} fill="none" stroke="var(--border)" strokeWidth="8" />
-            <circle
-              cx="64"
-              cy="64"
-              r={r}
-              fill="none"
-              stroke="var(--lime)"
-              strokeWidth="8"
-              strokeLinecap="round"
-              strokeDasharray={c}
-              strokeDashoffset={c * (1 - progress)}
-              style={{ transition: "stroke-dashoffset 1200ms cubic-bezier(0.22,1,0.36,1)" }}
-            />
-          </svg>
-          <div className="relative text-center animate-count-pop">
-            {ready ? (
-              <p className="font-display text-4xl font-bold leading-none tabular-nums">{count}</p>
-            ) : (
-              <Skeleton className="mx-auto h-10 w-16" label="Loading annotations" />
-            )}
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              board points
-            </p>
-          </div>
-        </div>
-
-        <div className="text-center">
-          <h2 className="text-2xl font-semibold leading-tight">Welcome to fency</h2>
-          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-            {ready && people != null && annotations != null && pct != null ? (
-              <>
-                Right now the board shows{" "}
-                <span className="font-semibold text-foreground">{people} contributors</span> and{" "}
-                <span className="font-semibold text-foreground">{annotations} points</span>
-                {" "}toward a {goal}-point community goal ({pct}%).
-              </>
-            ) : (
-              <span className="inline-flex flex-col items-center gap-2">
-                <Skeleton className="h-4 w-56" />
-                <Skeleton className="h-4 w-40" />
-              </span>
-            )}
-          </p>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {(
-            [
-              [Users, people, "contributors"],
-              [MapPinned, systems, "systems done"],
-              [Flag, flags, "open flags"],
-            ] as const
-          ).map(([Icon, value, label], i) => (
-            <div
-              key={label}
-              className="rounded-2xl bg-secondary px-3 py-3 text-center animate-fade-in"
-              style={{ animationDelay: `${300 + i * 120}ms`, animationFillMode: "backwards" }}
+        <div className="space-y-5 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet animate-scale-in">
+          <div className="flex items-start justify-between">
+            <StatusPill>
+              <Sparkles className="size-3.5" />{" "}
+              {since
+                ? t("welcomeAway", { since })
+                : loading
+                  ? t("welcomeLoading")
+                  : t("welcomeBadge")}
+            </StatusPill>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label={t("closeGreeting")}
+              className="grid size-9 place-items-center rounded-full bg-secondary text-secondary-foreground"
             >
-              <Icon className="mx-auto size-4 text-muted-foreground" />
-              {value != null && !loading ? (
-                <p className="mt-1.5 text-base font-semibold tabular-nums">{value}</p>
+              <X className="size-5" />
+            </button>
+          </div>
+
+          <div className="relative mx-auto grid size-[136px] place-items-center">
+            <svg viewBox="0 0 128 128" className="absolute inset-0 size-full -rotate-90" aria-hidden>
+              <circle cx="64" cy="64" r={r} fill="none" stroke="var(--border)" strokeWidth="8" />
+              <circle
+                cx="64"
+                cy="64"
+                r={r}
+                fill="none"
+                stroke="var(--lime)"
+                strokeWidth="8"
+                strokeLinecap="round"
+                strokeDasharray={c}
+                strokeDashoffset={c * (1 - progress)}
+                style={{ transition: "stroke-dashoffset 1200ms cubic-bezier(0.22,1,0.36,1)" }}
+              />
+            </svg>
+            <div className="relative text-center animate-count-pop">
+              {ready ? (
+                <p className="font-display text-4xl font-bold leading-none tabular-nums">{count}</p>
               ) : (
-                <Skeleton className="mx-auto mt-1.5 h-5 w-8" />
+                <Skeleton className="mx-auto h-10 w-16" label={t("loadingAnnotations")} />
               )}
-              <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-                {label}
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
+                {t("boardPoints")}
               </p>
             </div>
-          ))}
-        </div>
+          </div>
 
-        <div className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
-          <Trophy className="size-4 shrink-0 text-muted-foreground" />
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-[14px] font-semibold">Annotating as guest</span>
-            <span className="block font-mono text-[10px] text-muted-foreground">
-              no account — fences sync anonymously when online
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold leading-tight">{t("welcomeTitle")}</h2>
+            <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
+              {ready && people != null && annotations != null && pct != null ? (
+                t("welcomeStatsBody", {
+                  people,
+                  points: annotations,
+                  goal,
+                  pct,
+                })
+              ) : (
+                <span className="inline-flex flex-col items-center gap-2">
+                  <Skeleton className="h-4 w-56" />
+                  <Skeleton className="h-4 w-40" />
+                </span>
+              )}
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2">
+            {statLabels.map(([Icon, value, label], i) => (
+              <div
+                key={label}
+                className="rounded-2xl bg-secondary px-3 py-3 text-center animate-fade-in"
+                style={{ animationDelay: `${300 + i * 120}ms`, animationFillMode: "backwards" }}
+              >
+                <Icon className="mx-auto size-4 text-muted-foreground" />
+                {value != null && !loading ? (
+                  <p className="mt-1.5 text-base font-semibold tabular-nums">{value}</p>
+                ) : (
+                  <Skeleton className="mx-auto mt-1.5 h-5 w-8" />
+                )}
+                <p className="font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {label}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-3 rounded-2xl border border-border px-4 py-3">
+            <Trophy className="size-4 shrink-0 text-muted-foreground" />
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[14px] font-semibold">
+                {t("guestAnnotating")}
+              </span>
+              <span className="block font-mono text-[10px] text-muted-foreground">
+                {t("guestSyncHint")}
+              </span>
             </span>
-          </span>
-          <button
-            type="button"
-            onClick={onOpenLeaderboard}
-            className="h-9 shrink-0 rounded-full bg-secondary px-3 text-[13px] font-semibold"
-          >
-            Leaderboard
-          </button>
-        </div>
+            <button
+              type="button"
+              onClick={onOpenLeaderboard}
+              className="h-9 shrink-0 rounded-full bg-secondary px-3 text-[13px] font-semibold"
+            >
+              {t("leaderboard")}
+            </button>
+          </div>
 
-        <div className="space-y-2">
-          <button
-            id="welcome-start-btn"
-            type="button"
-            onClick={onStart}
-            className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
-          >
-            Add mine now
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
-          >
-            Just look at the map
-          </button>
+          <div className="space-y-2">
+            <button
+              id="welcome-start-btn"
+              type="button"
+              onClick={onStart}
+              className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
+            >
+              {t("addMineNow")}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
+            >
+              {t("justLookAtMap")}
+            </button>
+          </div>
         </div>
-      </div>
       </div>
     </div>
   );

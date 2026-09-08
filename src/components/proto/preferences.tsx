@@ -1,51 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Languages, Moon, Palette, Sun, SunMoon } from "lucide-react";
-import { useI18n } from "@/i18n/context";
+import { useI18n, type Lang } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
-export type Lang = "en" | "de";
+export type { Lang };
 export type Theme = "light" | "dark" | "system";
 export type Scheme = "field" | "midnight" | "coral" | "harvest" | "voltage";
 
-export const LANGS: { id: Lang; label: string; meta: string }[] = [
-  { id: "en", label: "English", meta: "EN" },
-  { id: "de", label: "Deutsch", meta: "DE" },
-];
-
-export const THEMES: { id: Theme; label: string; Icon: typeof Sun }[] = [
-  { id: "light", label: "Light", Icon: Sun },
-  { id: "dark", label: "Dark", Icon: Moon },
-  { id: "system", label: "Auto", Icon: SunMoon },
-];
-
 /** Colour schemes — swatches are the palette's key hues, in order. */
-export const SCHEMES: { id: Scheme; label: string; swatches: string[] }[] = [
-  {
-    id: "field",
-    label: "Field",
-    swatches: ["#1b2b22", "#c9f24d", "#e9f7e2", "#e8873c"],
-  },
-  {
-    id: "midnight",
-    label: "Midnight",
-    swatches: ["#171738", "#3423a6", "#7180b9", "#dff3e4"],
-  },
-  {
-    id: "coral",
-    label: "Coral",
-    swatches: ["#445e93", "#f93943", "#fcb0b3", "#fcecc9"],
-  },
-  {
-    id: "harvest",
-    label: "Harvest",
-    swatches: ["#233d4d", "#fe7f2d", "#fcca46", "#a1c181"],
-  },
-  {
-    id: "voltage",
-    label: "Voltage",
-    swatches: ["#2e294e", "#541388", "#d90368", "#ffd400"],
-  },
-];
+export const SCHEME_SWATCHES: Record<Scheme, string[]> = {
+  field: ["#1b2b22", "#c9f24d", "#e9f7e2", "#e8873c"],
+  midnight: ["#171738", "#3423a6", "#7180b9", "#dff3e4"],
+  coral: ["#445e93", "#f93943", "#fcb0b3", "#fcecc9"],
+  harvest: ["#233d4d", "#fe7f2d", "#fcca46", "#a1c181"],
+  voltage: ["#2e294e", "#541388", "#d90368", "#ffd400"],
+};
 
 /** Applies the chosen theme to <html> so every token switches at once. */
 export function useThemeEffect(theme: Theme, scheme: Scheme = "voltage") {
@@ -64,7 +33,9 @@ export function useThemeEffect(theme: Theme, scheme: Scheme = "voltage") {
 
   useEffect(() => {
     const root = document.documentElement;
-    SCHEMES.forEach((s) => root.classList.remove(`palette-${s.id}`));
+    (Object.keys(SCHEME_SWATCHES) as Scheme[]).forEach((s) =>
+      root.classList.remove(`palette-${s}`),
+    );
     if (scheme !== "field") root.classList.add(`palette-${scheme}`);
   }, [scheme]);
 }
@@ -116,23 +87,56 @@ function Segment<T extends string>({
  * welcome greeting so returning users can set both before touching the map.
  */
 export function Preferences({
-  lang,
   theme,
   scheme,
-  onLang,
   onTheme,
   onScheme,
   compact = false,
 }: {
-  lang: Lang;
   theme: Theme;
   scheme: Scheme;
-  onLang: (l: Lang) => void;
   onTheme: (t: Theme) => void;
   onScheme: (s: Scheme) => void;
   compact?: boolean;
 }) {
-  const { t } = useI18n();
+  const { lang, setLang, t } = useI18n();
+
+  const langs = useMemo(
+    () => [
+      { id: "en" as const, label: t("langEnglish") },
+      { id: "de" as const, label: t("langGerman") },
+    ],
+    [t],
+  );
+
+  const themes = useMemo(
+    () => [
+      { id: "light" as const, label: t("themeLight"), Icon: Sun },
+      { id: "dark" as const, label: t("themeDark"), Icon: Moon },
+      { id: "system" as const, label: t("themeAuto"), Icon: SunMoon },
+    ],
+    [t],
+  );
+
+  const schemes = useMemo(
+    () =>
+      (Object.keys(SCHEME_SWATCHES) as Scheme[]).map((id) => ({
+        id,
+        label: t(
+          id === "field"
+            ? "schemeField"
+            : id === "midnight"
+              ? "schemeMidnight"
+              : id === "coral"
+                ? "schemeCoral"
+                : id === "harvest"
+                  ? "schemeHarvest"
+                  : "schemeVoltage",
+        ),
+        swatches: SCHEME_SWATCHES[id],
+      })),
+    [t],
+  );
 
   return (
     <section
@@ -158,9 +162,9 @@ export function Preferences({
         )}
         <Segment
           value={lang}
-          options={LANGS.map((l) => ({ id: l.id, label: l.label }))}
-          onChange={onLang}
-          ariaLabel="Language"
+          options={langs}
+          onChange={setLang}
+          ariaLabel={t("language")}
         />
       </div>
       <div className="space-y-2">
@@ -171,13 +175,12 @@ export function Preferences({
         )}
         <Segment
           value={theme}
-          options={THEMES}
+          options={themes}
           onChange={onTheme}
-          ariaLabel="Colour theme"
+          ariaLabel={t("colourTheme")}
         />
       </div>
 
-      {/* colour scheme swatches */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Palette className="size-3.5 text-muted-foreground" />
@@ -187,11 +190,11 @@ export function Preferences({
         </div>
         <div
           role="radiogroup"
-          aria-label="Colour scheme"
+          aria-label={t("colourScheme")}
           id="scheme-picker"
           className="grid grid-cols-5 gap-2"
         >
-          {SCHEMES.map((s) => {
+          {schemes.map((s) => {
             const active = s.id === scheme;
             return (
               <button
@@ -226,10 +229,7 @@ export function Preferences({
 
       {!compact && (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Dark keeps the map readable at night; Auto follows iOS. Schemes retint
-          the whole app — Field stays the highest-contrast option for bright
-          sunlight. Language switches labels only — taxonomy values stay in the
-          dataset schema.
+          {t("preferencesHint")}
         </p>
       )}
     </section>

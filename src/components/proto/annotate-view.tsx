@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Check, Crosshair, Eye, EyeOff, Maximize2, Undo2, Plus, X } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { getDrawnGeometry } from "./map-canvas";
 import { CyclePill, HudButton, InfoPill } from "./primitives";
 import { cn } from "@/lib/utils";
@@ -66,6 +67,7 @@ export function AnnotateView({
   ha?: string;
   systemLabel?: string;
 }) {
+  const { t } = useI18n();
   const { zoomLabel, service } = useMapHudInfo();
   const [context, setContext] = useState(CONTEXT[0]!);
   const [visibility, setVisibility] = useState(VISIBILITY[0]!);
@@ -77,11 +79,9 @@ export function AnnotateView({
   const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Ensure draw mode is armed every time this screen is shown (old guided flow).
     document.body.dataset.extraFence = "0";
     DrawModule.setActiveState("ANNOTATION");
-    const t = window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 200);
-    const t2 = window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 600);
+
     const hideHint = window.setTimeout(() => setHint(false), 5000);
 
     const tick = () => {
@@ -97,16 +97,15 @@ export function AnnotateView({
     map?.on("draw.update", tick);
     map?.on("draw.delete", tick);
     map?.on("draw.modechange", tick);
-    const id = window.setInterval(tick, 400);
+    map?.on("draw.render", tick);
+    tick();
     return () => {
-      window.clearTimeout(t);
-      window.clearTimeout(t2);
       window.clearTimeout(hideHint);
       map?.off("draw.create", tick);
       map?.off("draw.update", tick);
       map?.off("draw.delete", tick);
       map?.off("draw.modechange", tick);
-      window.clearInterval(id);
+      map?.off("draw.render", tick);
       delete document.body.dataset.extraFence;
     };
   }, []);
@@ -114,7 +113,6 @@ export function AnnotateView({
   const rearmDraw = () => {
     document.body.dataset.extraFence = "0";
     DrawModule.setActiveState("ANNOTATION");
-    window.setTimeout(() => DrawModule.setActiveState("ANNOTATION"), 100);
   };
 
   const refreshAnnotations = async () => {
@@ -155,7 +153,7 @@ export function AnnotateView({
         setClosed(false);
         await refreshAnnotations();
         if (feature?.properties?.sync_state === "pending") {
-          setSaveError("Saved on this device only — will sync when the red dot turns green.");
+          setSaveError(t("savePendingSync"));
         }
         onSaved();
         rearmDraw();
@@ -172,7 +170,7 @@ export function AnnotateView({
     const geometry = getDrawnGeometry();
     if (!fenceReadyToSave(geometry)) {
       setHint(true);
-      setSaveError("Draw a fence first, then tap + to save it as Extra (not linked to this PV).");
+      setSaveError(t("saveExtraNeedFence"));
       return;
     }
     setCommitting(true);
@@ -194,7 +192,7 @@ export function AnnotateView({
         setClosed(false);
         await refreshAnnotations();
         if (feature?.properties?.sync_state === "pending") {
-          setSaveError("Saved on this device only — will sync when the red dot turns green.");
+          setSaveError(t("savePendingSync"));
         }
         // Extra stays on this system — do not advance.
         (onExtraSaved || onSaved)();
@@ -226,12 +224,12 @@ export function AnnotateView({
       {/* per-screen tool rail — the global (i) and progress ring live above it */}
       {!solo && (
         <div className="absolute right-4 top-[calc(var(--sat)+56px)] z-30 flex flex-col items-end gap-2">
-          <HudButton id="annotate-recenter" label="Recenter on this system" onClick={onRecenter}>
+          <HudButton id="annotate-recenter" label={t("recenterOnSystem")} onClick={onRecenter}>
             <Crosshair className="size-5" />
           </HudButton>
           <HudButton
             id="annotate-undo"
-            label="Undo last point"
+            label={t("undoLastPoint")}
             onClick={() => {
               DrawModule.deleteActiveOrSelectedFeature?.();
               const geom = getDrawnGeometry();
@@ -243,13 +241,13 @@ export function AnnotateView({
           </HudButton>
           <HudButton
             id="pv-toggle-annotate"
-            label={pv ? "Hide PV systems" : "Show PV systems"}
+            label={pv ? t("hidePVSystems") : t("showPVSystems")}
             active={!pv}
             onClick={() => onPv(!pv)}
           >
             {pv ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
           </HudButton>
-          <HudButton label="Full screen — hide all chrome" onClick={() => onSolo(true)}>
+          <HudButton label={t("fullScreenHideChrome")} onClick={() => onSolo(true)}>
             <Maximize2 className="size-5" />
           </HudButton>
         </div>
@@ -258,8 +256,7 @@ export function AnnotateView({
       {hint && !drawn && !solo && (
         <div className="pointer-events-none absolute inset-x-4 top-[calc(var(--sat)+56px)] z-30 flex justify-center">
           <p className="max-w-[20rem] rounded-2xl border border-border bg-card px-3 py-2 text-center text-[12px] font-medium">
-            Tap the map to place fence points. Tap the first point again to close the ring, or save an open line with the lime tick.
-            Use + for an Extra fence (not linked to this PV).
+            {t("annotateHint")}
           </p>
         </div>
       )}
@@ -281,13 +278,13 @@ export function AnnotateView({
         {reasonOpen ? (
           <div className="glass space-y-2 rounded-3xl border border-border p-2 shadow-hud">
             <p className="px-2 pt-1 text-center text-[12px] font-medium text-muted-foreground">
-              Flag this system — no fence will be saved.
+              {t("flagNoSaveHint")}
             </p>
             {!solo && (
               <div className="flex flex-wrap gap-1.5 px-1">
                 <CyclePill
                   id="tag-context-flag"
-                  label="context"
+                  label={t("tagContext")}
                   options={CONTEXT}
                   value={context}
                   onChange={setContext}
@@ -295,7 +292,7 @@ export function AnnotateView({
                 />
                 <CyclePill
                   id="tag-visibility-flag"
-                  label="visibility"
+                  label={t("tagVisibility")}
                   options={VISIBILITY}
                   value={visibility}
                   onChange={setVisibility}
@@ -318,7 +315,7 @@ export function AnnotateView({
               onClick={() => setReasonOpen(false)}
               className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
             >
-              Go back
+              {t("goBack")}
             </button>
           </div>
         ) : (
@@ -327,7 +324,7 @@ export function AnnotateView({
               <div className="flex min-w-0 flex-col items-start gap-1.5">
                 <CyclePill
                   id="tag-context"
-                  label="context"
+                  label={t("tagContext")}
                   options={CONTEXT}
                   value={context}
                   onChange={setContext}
@@ -335,7 +332,7 @@ export function AnnotateView({
                 />
                 <CyclePill
                   id="tag-visibility"
-                  label="visibility"
+                  label={t("tagVisibility")}
                   options={VISIBILITY}
                   value={visibility}
                   onChange={setVisibility}
@@ -350,7 +347,7 @@ export function AnnotateView({
                 type="button"
                 onClick={saveExtra}
                 disabled={committing}
-                aria-label="Save extra fence without PV link"
+                aria-label={t("saveExtraAria")}
                 className="glass grid size-11 place-items-center rounded-full border border-border shadow-hud disabled:opacity-50"
               >
                 <Plus className="size-5" />
@@ -365,7 +362,7 @@ export function AnnotateView({
                     setDrawn(false);
                     _onExit();
                   }}
-                  aria-label="Leave annotation without saving"
+                  aria-label={t("leaveAnnotateAria")}
                   className="glass grid size-11 place-items-center rounded-full border border-border text-destructive shadow-hud"
                 >
                   <X className="size-5" />
@@ -375,7 +372,7 @@ export function AnnotateView({
                   type="button"
                   onClick={commit}
                   disabled={committing}
-                  aria-label="Save fence and continue"
+                  aria-label={t("saveFenceAria")}
                   className={cn(
                     "grid size-11 place-items-center rounded-full bg-lime text-lime-foreground shadow-hud",
                     drawn && !committing && "animate-tick-wiggle",

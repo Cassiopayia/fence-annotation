@@ -3,6 +3,7 @@ import { X } from "lucide-react";
 import { ensureMapLibreWorker } from "@/lib/zaun/maplibre-setup";
 import * as maplibregl from "maplibre-gl";
 import type { Map as MlMap, StyleSpecification } from "maplibre-gl";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { MapModule } from "@/lib/zaun/map";
 
@@ -46,6 +47,7 @@ const LAYER_STYLE: Record<LoupeLayer, StyleSpecification> = {
  * Draggable magnifier — second MapLibre view centered under the loupe glass.
  */
 export function Loupe({ onClose }: { onClose: () => void }) {
+  const { t } = useI18n();
   const [pos, setPos] = useState({ x: 24, y: 220 });
   const [layer, setLayer] = useState<LoupeLayer>(LAYERS[0]!);
   const [dragging, setDragging] = useState(false);
@@ -224,7 +226,7 @@ export function Loupe({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={() => setLayer(LAYERS[(LAYERS.indexOf(layer) + 1) % LAYERS.length]!)}
-          aria-label={`Loupe layer: ${layer}. Tap to switch.`}
+          aria-label={t("loupeLayerAria", { layer })}
           className="shrink-0 rounded-full border border-border bg-card px-2 py-0.5 font-mono text-[10px] font-semibold uppercase leading-4 tracking-wide"
         >
           {layer}
@@ -233,7 +235,7 @@ export function Loupe({ onClose }: { onClose: () => void }) {
         <button
           type="button"
           onClick={onClose}
-          aria-label="Close loupe"
+          aria-label={t("closeLoupe")}
           className="grid size-7 shrink-0 place-items-center rounded-full border border-border bg-card"
         >
           <X className="size-3.5" />

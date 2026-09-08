@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Trophy, ShieldCheck, Clock, UserRound } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { Skeleton } from "./skeleton";
 import { authorLabel, setUsername } from "@/lib/zaun/supabase-client";
@@ -29,6 +30,7 @@ export function Leaderboard({
   loading?: boolean;
   onUsernameChange?: (name: string | null) => void;
 }) {
+  const { t } = useI18n();
   const [grow, setGrow] = useState(false);
   const [draft, setDraft] = useState(username ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
@@ -91,14 +93,13 @@ export function Leaderboard({
       <div className="flex items-center gap-3 rounded-2xl bg-lime-soft px-4 py-3">
         <Trophy className="size-5 shrink-0 text-lime-foreground" />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Set a name before you save fences — otherwise verified rows show as Guest.
-          No accounts required.
+          {t("leaderboardNameHint")}
         </p>
       </div>
 
       <div className="space-y-2 rounded-2xl border border-border p-3">
         <label htmlFor="display-name" className="block font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-          Your name
+          {t("yourName")}
         </label>
         <div className="flex gap-2">
           <input
@@ -112,7 +113,7 @@ export function Leaderboard({
             onKeyDown={(e) => {
               if (e.key === "Enter") applyName();
             }}
-            placeholder="guest"
+            placeholder={t("guestPlaceholder")}
             autoComplete="username"
             spellCheck={false}
             maxLength={USERNAME_MAX}
@@ -123,12 +124,12 @@ export function Leaderboard({
             onClick={applyName}
             className="h-11 shrink-0 rounded-full bg-lime px-4 text-sm font-bold text-lime-foreground"
           >
-            Save
+            {t("save")}
           </button>
         </div>
         <p className="font-mono text-[11px] text-muted-foreground">
-          {USERNAME_MIN}–{USERNAME_MAX} chars · a–z, 0–9, _
-          {nameSaved ? " · saved" : ""}
+          {t("usernameRules", { min: USERNAME_MIN, max: USERNAME_MAX })}
+          {nameSaved ? t("nameSaved") : ""}
         </p>
         {nameError ? (
           <p className="text-[12px] font-medium text-destructive">{nameError}</p>
@@ -136,7 +137,7 @@ export function Leaderboard({
       </div>
 
       {loading ? (
-        <div className="space-y-1.5" aria-busy="true" aria-label="Loading leaderboard">
+        <div className="space-y-1.5" aria-busy="true" aria-label={t("loadingLeaderboard")}>
           {Array.from({ length: 6 }, (_, i) => (
             <div key={i} className="rounded-2xl border border-border px-3 py-2.5">
               <div className="flex items-center gap-3">
@@ -149,7 +150,7 @@ export function Leaderboard({
         </div>
       ) : display.length === 0 ? (
         <p className="rounded-2xl bg-secondary px-4 py-6 text-center text-sm text-muted-foreground">
-          No verified contributors yet — be the first.
+          {t("leaderboardEmpty")}
         </p>
       ) : (
         <ol className="space-y-1.5">
@@ -177,7 +178,11 @@ export function Leaderboard({
                   </span>
                   <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
                     {r.name}
-                    {mine && <span className="ml-1.5 font-mono text-[10px] uppercase">you</span>}
+                    {mine && (
+                      <span className="ml-1.5 font-mono text-[10px] uppercase">
+                        {t("you")}
+                      </span>
+                    )}
                   </span>
                   <span className="shrink-0 font-mono text-sm font-semibold tabular-nums">
                     {r.verified}
@@ -200,15 +205,17 @@ export function Leaderboard({
               {displayAuthorName(username || authorLabel())}
             </span>
             <span className="block font-mono text-xs text-muted-foreground">
-              {saved} saved · {verified} verified
+              {t("leaderboardYourStats", { saved, verified })}
             </span>
           </span>
         </div>
         {!listed && (
           <p className="flex items-start gap-2 font-mono text-[11px] leading-relaxed text-muted-foreground">
             <Clock className="mt-px size-3.5 shrink-0" />
-            Hidden until your first verified fence
-            {saved > 0 ? ` — ${saved} waiting in review.` : "."}
+            {t("leaderboardHidden")}
+            {saved > 0
+              ? t("leaderboardWaitingReview", { saved })
+              : "."}
           </p>
         )}
       </div>

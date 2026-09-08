@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Turnstile } from "@marsidev/react-turnstile";
+import { useI18n } from "@/i18n/context";
 import { setPendingCaptchaToken } from "@/lib/zaun/supabase-client";
 
 function turnstileSiteKey(): string {
@@ -17,6 +18,7 @@ export function captchaConfigured(): boolean {
  * Token is handed to anonymous sign-in on first capture.
  */
 export function CaptchaGate({ onPassed }: { onPassed: () => void }) {
+  const { t } = useI18n();
   const siteKey = turnstileSiteKey();
   const [error, setError] = useState<string | null>(null);
   const [widgetKey, setWidgetKey] = useState(0);
@@ -31,10 +33,9 @@ export function CaptchaGate({ onPassed }: { onPassed: () => void }) {
     <div className="absolute inset-0 z-[90] overflow-y-auto overscroll-contain bg-primary/70 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)]">
       <div className="flex min-h-full flex-col justify-end">
       <div className="space-y-4 rounded-[28px] bg-card p-6 text-card-foreground">
-        <h2 className="font-display text-xl font-bold">Quick check</h2>
+        <h2 className="font-display text-xl font-bold">{t("captchaTitle")}</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Complete the CAPTCHA to browse the map and annotate. No account needed — this keeps the
-          shared dataset clear of bots.
+          {t("captchaBody")}
         </p>
         <div className="flex justify-center overflow-hidden rounded-2xl bg-white p-1">
           <Turnstile
@@ -47,12 +48,12 @@ export function CaptchaGate({ onPassed }: { onPassed: () => void }) {
             }}
             onExpire={() => {
               setPendingCaptchaToken(null);
-              setError("CAPTCHA expired — try again.");
+              setError(t("captchaExpired"));
               setWidgetKey((k) => k + 1);
             }}
             onError={() => {
               setPendingCaptchaToken(null);
-              setError("CAPTCHA failed — try again.");
+              setError(t("captchaFailed"));
               setWidgetKey((k) => k + 1);
             }}
             options={{ theme: "light", size: "normal" }}

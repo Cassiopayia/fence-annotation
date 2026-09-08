@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { usePersisted } from "@/hooks/use-persisted";
 import { useMapHudInfo } from "@/hooks/use-map-hud-info";
 import { Skeleton } from "@/components/proto/skeleton";
@@ -60,12 +60,14 @@ import {
 import {
   Preferences,
   useThemeEffect,
-  type Lang,
   type Theme,
   type Scheme,
 } from "@/components/proto/preferences";
+import { useI18n } from "@/i18n/context";
+import { buildTourSteps } from "@/i18n/tour-steps";
+import { statusMetaKey } from "@/i18n/status-meta";
 
-import { Tour, type TourStep } from "@/components/proto/tour";
+import { Tour } from "@/components/proto/tour";
 import { TabBar, type Tab } from "@/components/proto/tab-bar";
 import {
   InstallPrompt,
@@ -136,7 +138,6 @@ export const Route = createFileRoute("/")({
 import {
   ONBOARDING,
   REVIEW_UNLOCK,
-  STATUS_META,
   WHAT_IS_THIS,
   ringAreaHa,
 } from "./-home-copy";
@@ -153,6 +154,19 @@ type Overlay =
   | null;
 
 function Index() {
+  const { t } = useI18n();
+  const connectionLabel = (c: ConnectionStatus) => {
+    switch (c) {
+      case "connected":
+        return t("connectedStatus");
+      case "loading":
+        return t("loadingStatus");
+      case "pending":
+        return t("pendingStatus");
+      default:
+        return t("connOffline");
+    }
+  };
   const [tab, setTab] = useState<Tab>("map");
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [review, setReview] = useState(false);
@@ -160,6 +174,8 @@ function Index() {
   const [selected, setSelected] = useState(SYSTEMS[0]!.id);
   const [systems, setSystems] = useState(SYSTEMS);
   const [recenterKey, setRecenterKey] = useState(0);
+  /** Set when welcome "Add mine now" should land in annotate after onboarding. */
+  const annotateAfterOnboardingRef = useRef(false);
 
   /** Still needs a fence — skip already annotated / flagged / excluded systems. */
   const isOpenForAnnotate = (s: { status: SystemStatus }) =>
@@ -208,6 +224,14 @@ function Index() {
     setTab("annotate");
     setRecenterKey((k) => k + 1);
   };
+
+  const finishOnboarding = (enterAnnotateAfter: boolean) => {
+    setOverlay(null);
+    if (enterAnnotateAfter && annotateAfterOnboardingRef.current) {
+      annotateAfterOnboardingRef.current = false;
+      enterAnnotate();
+    }
+  };
   const [imagery, setImagery] = useState<ImagerySnapshot>(() =>
     getImagerySnapshot(),
   );
@@ -229,7 +253,6 @@ function Index() {
   );
   const offerInstall = useInstallOffer();
 
-  const [lang, setLang] = usePersisted<Lang>("i18n.lang", "en");
   const [theme, setTheme] = usePersisted<Theme>("zaun.theme", "light");
   const [scheme, setScheme] = usePersisted<Scheme>("zaun.scheme", "voltage");
 
@@ -451,158 +474,14 @@ function Index() {
     setSolo(false);
     setTab(next);
   };
-  const tourSteps: TourStep[] = [
-    {
-      title: "Let me show you around",
-      body: "A quick walk through every control, screen by screen. Arrows point at the real button and it flashes while we talk about it. Skip any time with ✕.",
-      enter: () => {
-        setLoupe(false);
-        resetChrome("map");
-      },
-    },
-    {
-      screen: "global",
-      target: "#status-info-btn",
-      title: "The info pill",
-      body: "Tap once for imagery (zoom + tile service), again for the selected system with its hectares, again for the full sheet. The dot is green whenever you are connected.",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "global",
-      target: "#contribution-ring",
-      title: "Your progress ring",
-      body: `It fills and pops with every saved fence. At ${REVIEW_UNLOCK} annotations dataset chip review unlocks.`,
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "map",
-      target: "#layers-toggle",
-      title: "Imagery & layers",
-      body: "Switch basemaps: basemap.de by default, plus Maxar, Land DOP WMS and optional OSM (tiles stop at zoom 14).",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "map",
-      target: "#pv-toggle",
-      title: "Hide the PV outlines",
-      body: "Turn the solar outlines off to judge the raw imagery, then back on to compare.",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "map",
-      target: "#loupe-toggle",
-      title: "The loupe lives here",
-      body: "Open the magnifier from this rail. Close it again and it snaps straight back to this button.",
-      enter: () => {
-        resetChrome("map");
-        setLoupe(false);
-      },
-    },
-    {
-      screen: "map",
-      target: "#loupe",
-      title: "Drag it anywhere",
-      body: "The loupe shows a second layer (Maxar by default) — drag it over a fence line and cycle the layer inside it.",
-      enter: () => {
-        resetChrome("map");
-        setLoupe(true);
-      },
-    },
-    {
-      screen: "map",
-      target: "#solo-toggle",
-      title: "Full screen",
-      body: "Hides every piece of chrome for a pure map. One small control in the corner brings it all back.",
-      enter: () => {
-        resetChrome("map");
-        setLoupe(false);
-      },
-    },
-    {
-      screen: "global",
-      target: "#action-bar",
-      title: "The action bar",
-      body: "Always within thumb reach at the bottom — above the tab bar here, and dropped to the very bottom edge when the tabs hide. ◀ ▶ step through systems. The middle field searches by ID or place — during annotation it shows the current system instead.",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "map",
-      target: "#fab-sample-fence",
-      title: "Start annotating",
-      body: "The lime button opens guided annotation on the nearest open system. Lime always means action.",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "global",
-      target: "#mobile-tab-bar",
-      title: "Three tabs, that's it",
-      body: "Map · Annotate · More. The bar hides during annotation, annotation and review so the map gets the whole screen.",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "global → annotation",
-      target: "#tab-annotate",
-      title: "Your turn: open Annotate",
-      body: "Tap the Annotate tab yourself. The tab bar disappears and we continue inside guided annotation.",
-      awaitTap: true,
-      tapHint: "Tap Annotate",
-      enter: () => resetChrome("map"),
-    },
-    {
-      screen: "annotation",
-      title: "You're in annotation now",
-      body: "Notice the change: no tab bar, no extra chrome — just the map, the drawing controls on the right and the action bar showing the current system. Everything from here on lives on this screen.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "annotation",
-      target: "#annotate-recenter",
-      title: "Recenter",
-      body: "Snap back to the current system when you pan away while tracing.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "annotation",
-      target: "#annotate-undo",
-      title: "Undo a point",
-      body: "Removes the last point you placed. Long-press a vertex on the map to delete just that one.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "annotation",
-      target: "#tag-context",
-      title: "Context & visibility",
-      body: "Two small pills that cycle: rural / urban / complex, and clear / partial / occluded / none. They only appear once a fence is drawn and never cover the line.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "annotation",
-      target: "#guided-save-btn",
-      title: "The lime tick saves",
-      body: "It wiggles as soon as the line is closed, flies into your progress ring and moves on to the next system.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "annotation",
-      target: "#guided-exit-btn",
-      title: "Leave, or add an extra fence",
-      body: "✕ leaves without saving. The + above saves an additional fence that is not linked to this PV system.",
-      enter: () => resetChrome("annotate"),
-    },
-    {
-      screen: "more",
-      target: "#more-status",
-      title: "More opens with your status",
-      body: "Dataset progress, chips you reviewed, and community board points. Tap it for the full overview.",
-      enter: () => resetChrome("more"),
-    },
-    {
-      screen: "review",
-      title: "Dataset chip review",
-      body: `After ${REVIEW_UNLOCK} saved fences, review unlocks in More: full screen, swipe right to keep, left to reject, up and down to change chip, flag for a second look.`,
-      enter: () => resetChrome("more"),
-    },
-  ];
+  const tourSteps = useMemo(
+    () =>
+      buildTourSteps(t, REVIEW_UNLOCK, {
+        resetChrome,
+        setLoupe,
+      }),
+    [t],
+  );
 
   if (review) return <ChipReview onExit={() => setReview(false)} />;
 
@@ -733,14 +612,14 @@ function Index() {
           <div className="absolute right-4 top-[calc(var(--sat)+62px)] z-30 flex flex-col items-end gap-2">
             <HudButton
               id="layers-toggle"
-              label="Imagery and layers"
+              label={t("imageryLayers")}
               onClick={() => setOverlay("imagery")}
             >
               <Layers className="size-5" />
             </HudButton>
             <HudButton
               id="pv-toggle"
-              label={pv ? "Hide PV systems" : "Show PV systems"}
+              label={pv ? t("hidePVSystems") : t("showPVSystems")}
               active={!pv}
               onClick={() => setPv(!pv)}
             >
@@ -749,7 +628,7 @@ function Index() {
 
             {!loupe && (
               <HudButton
-                label="Loupe — draggable magnifier with a second imagery layer"
+                label={t("loupeHint")}
                 id="loupe-toggle"
                 onClick={() => setLoupe(true)}
               >
@@ -758,7 +637,7 @@ function Index() {
             )}
             <HudButton
               id="solo-toggle"
-              label="Full screen — hide all chrome"
+              label={t("fullScreenHideChrome")}
               onClick={() => setSolo(true)}
             >
               <Maximize2 className="size-5" />
@@ -776,7 +655,7 @@ function Index() {
         <button
           type="button"
           onClick={() => setSolo(false)}
-          aria-label="Exit full screen"
+          aria-label={t("exitFullScreen")}
           className="glass absolute right-4 top-[calc(var(--sat)+12px)] z-40 grid size-10 place-items-center rounded-full border border-border shadow-hud"
         >
           <Minimize2 className="size-5" />
@@ -787,11 +666,11 @@ function Index() {
       {tab === "more" && (
         <div className="absolute inset-x-0 bottom-0 top-[calc(var(--sat)+5rem)] z-30 overflow-y-auto rounded-t-[28px] bg-card px-5 pt-4 pb-[calc(var(--tab-bar-inner-height)+var(--sab)+1rem)] shadow-sheet">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-semibold">More</h1>
+            <h1 className="text-xl font-semibold">{t("tabMore")}</h1>
             <button
               type="button"
               onClick={() => setTab("map")}
-              aria-label="Close more"
+              aria-label={t("closeMore")}
               className="grid size-9 place-items-center rounded-full bg-secondary"
             >
               <X className="size-5" />
@@ -816,10 +695,10 @@ function Index() {
               <Sparkles className="size-5 shrink-0 text-lime-foreground" />
               <span className="min-w-0 flex-1">
                 <span className="block text-[15px] font-semibold">
-                  How annotating works
+                  {t("tourCardTitle")}
                 </span>
                 <span className="block text-xs text-muted-foreground">
-                  Guided tour · arrows on every control
+                  {t("tourCardMeta")}
                 </span>
               </span>
             </button>
@@ -833,10 +712,10 @@ function Index() {
                 <Share className="size-5 shrink-0" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[15px] font-semibold">
-                    Add to Home Screen
+                    {t("installHomeScreen")}
                   </span>
                   <span className="block text-xs text-muted-foreground">
-                    Full-screen field mode without browser chrome
+                    {t("installHomeScreenMeta")}
                   </span>
                 </span>
                 <span className="grid size-5 shrink-0 place-items-center rounded-full bg-destructive font-mono text-[10px] font-bold text-destructive-foreground">
@@ -848,21 +727,27 @@ function Index() {
 
           <div className="mt-3">
             <ListRow
-              title="Systems catalog"
+              title={t("systemsCatalog")}
               meta={
                 statsLoading || !datasetStats?.total
-                  ? "Loading catalog…"
-                  : `${datasetStats.total.toLocaleString("en-US").replace(",", " ")} systems · ${datasetStats.annotated ?? 0} annotated`
+                  ? t("loadingCatalog")
+                  : t("systemsAnnotatedMeta", {
+                      total: datasetStats.total.toLocaleString("en-US").replace(",", " "),
+                      annotated: datasetStats.annotated ?? 0,
+                    })
               }
               onClick={() => setOverlay("systems")}
               trailing={<ListTree className="size-5" />}
             />
             <ListRow
-              title="Review annotations"
+              title={t("reviewAnnotations")}
               meta={
                 unlocked
-                  ? "Vote keep / reject on saved fences"
-                  : `Unlocks after ${REVIEW_UNLOCK} annotations · ${saved}/${REVIEW_UNLOCK}`
+                  ? t("reviewAnnotationsMetaUnlocked")
+                  : t("reviewAnnotationsMetaLocked", {
+                      count: REVIEW_UNLOCK,
+                      saved,
+                    })
               }
               onClick={() => unlocked && setReview(true)}
               trailing={
@@ -874,57 +759,63 @@ function Index() {
               }
             />
             <ListRow
-              title="Imagery & layers"
+              title={t("imageryLayers")}
               meta="basemap.de · Land DOP · Maxar · OSM≤z14"
               onClick={() => setOverlay("imagery")}
               trailing={<Layers className="size-5" />}
             />
             <ListRow
-              title="Community snapshot"
+              title={t("communitySnapshot")}
               meta={
                 statsLoading
-                  ? "Loading community stats…"
+                  ? t("loadingCommunityStats")
                   : welcomeStats?.people != null &&
                       welcomeStats?.annotations != null
-                    ? `${welcomeStats.people} people · ${welcomeStats.annotations} board points`
-                    : "Community stats unavailable"
+                    ? t("communitySnapshotMeta", {
+                        people: welcomeStats.people,
+                        points: welcomeStats.annotations,
+                      })
+                    : t("communityStatsUnavailable")
               }
               onClick={() => setWelcomeOpen(true)}
               trailing={<Sparkles className="size-5" />}
             />
             <ListRow
-              title="What is this?"
-              meta="Thesis, dataset and legal notes"
+              title={t("whatIsThis")}
+              meta={t("whatIsThisMeta")}
               onClick={() => setOverlay("whatisthis")}
               trailing={<HelpCircle className="size-5" />}
             />
             <ListRow
-              title="Info & contribution"
-              meta={`${saved} fences saved · connection ${connection}`}
+              title={t("infoContribution")}
+              meta={t("infoContributionMeta", {
+                saved,
+                status: connectionLabel(connection),
+              })}
               onClick={() => setOverlay("info")}
               trailing={<Info className="size-5" />}
             />
             <ListRow
-              title="Leaderboard"
-              meta="Verified fences · guest annotations"
+              title={t("leaderboard")}
+              meta={t("leaderboardMeta")}
               onClick={() => setOverlay("leaderboard")}
               trailing={<Trophy className="size-5" />}
             />
             <ListRow
-              title="Control reference"
-              meta="Optional · every button listed"
+              title={t("controlReference")}
+              meta={t("controlReferenceMeta")}
               onClick={() => setOverlay("onboarding")}
               trailing={<HelpCircle className="size-5" />}
             />
             <ListRow
-              title="Export GeoJSON"
-              meta="Coming later — download stays a stub for now"
+              title={t("exportGeojson")}
+              meta={t("exportGeojsonMeta")}
               trailing={<Lock className="size-5 text-muted-foreground" />}
             />
             {bugReportUrl ? (
               <ListRow
-                title="Report bug"
-                meta="Opens a GitHub issue"
+                title={t("reportBug")}
+                meta={t("reportBugMeta")}
                 variant="destructive"
                 onClick={reportBug}
                 trailing={<Bug className="size-5" />}
@@ -932,8 +823,8 @@ function Index() {
             ) : null}
             {contactMailto ? (
               <ListRow
-                title="Contact / removal"
-                meta="Private email — not a public GitHub issue"
+                title={t("contactRemoval")}
+                meta={t("contactRemovalMeta")}
                 onClick={openContact}
                 trailing={<HelpCircle className="size-5" />}
               />
@@ -942,10 +833,8 @@ function Index() {
 
           <div className="mt-4">
             <Preferences
-              lang={lang}
               theme={theme}
               scheme={scheme}
-              onLang={setLang}
               onTheme={setTheme}
               onScheme={setScheme}
             />
@@ -966,7 +855,7 @@ function Index() {
             style={{ bottom: barBottom }}
           >
             <div className="flex items-center gap-2 rounded-full border border-border bg-card p-1.5">
-              <HudButton label="Previous system" onClick={() => stepSystem(-1)}>
+              <HudButton label={t("prevSystem")} onClick={() => stepSystem(-1)}>
                 <ChevronLeft className="size-5" />
               </HudButton>
               {tab === "annotate" ? (
@@ -976,7 +865,7 @@ function Index() {
                   className="flex min-w-0 flex-1 items-center justify-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-sm font-semibold"
                 >
                   <span className="truncate font-mono text-xs">
-                    {selectedLabel || "Current system"}
+                    {selectedLabel || t("currentSystem")}
                     {selectedHa ? ` · ${selectedHa}` : ""}
                   </span>
                 </button>
@@ -985,16 +874,16 @@ function Index() {
                   id="fab-guided-annotation"
                   type="button"
                   onClick={() => setOverlay("systems")}
-                  aria-label="Search systems"
+                  aria-label={t("searchSystems")}
                   className="flex min-w-0 flex-1 items-center gap-2 rounded-full bg-secondary px-3 py-2.5 text-left"
                 >
                   <Search className="size-4 shrink-0 text-muted-foreground" />
                   <span className="truncate font-mono text-xs">
-                    {`Go to #ID · ${systems.length.toLocaleString()} systems`}
+                    {t("goToIdSystems", { count: systems.length.toLocaleString() })}
                   </span>
                 </button>
               )}
-              <HudButton label="Next system" onClick={() => stepSystem(1)}>
+              <HudButton label={t("nextSystem")} onClick={() => stepSystem(1)}>
                 <ChevronRight className="size-5" />
               </HudButton>
             </div>
@@ -1020,7 +909,7 @@ function Index() {
               onClick={() => enterAnnotate()}
               className="flex items-center gap-2 rounded-full bg-lime px-4 py-3 font-display text-[15px] font-bold text-lime-foreground tap-44"
             >
-              <PenLine className="size-4" /> Annotate
+              <PenLine className="size-4" /> {t("annotateFab")}
             </button>
           </div>
         )}
@@ -1054,6 +943,7 @@ function Index() {
             setWelcomeOpen(false);
             setOverlay(null);
             setSolo(false);
+            annotateAfterOnboardingRef.current = false;
             enterAnnotate();
           }}
         />
@@ -1070,7 +960,8 @@ function Index() {
           onStart={() => {
             markWelcomeSeen();
             setWelcomeOpen(false);
-            enterAnnotate();
+            annotateAfterOnboardingRef.current = true;
+            setOverlay("onboarding");
           }}
           stats={welcomeStats}
           loading={statsLoading}
@@ -1099,7 +990,7 @@ function Index() {
           setOverlay(null);
           setSystemQuery("");
         }}
-        title="Systems"
+        title={t("systems")}
       >
         <div className="sticky top-0 -mx-5 bg-card px-5 pb-3">
           <label className="flex items-center gap-2 rounded-full bg-secondary px-4 py-3">
@@ -1109,8 +1000,8 @@ function Index() {
               onChange={(e) => setSystemQuery(e.target.value)}
               autoFocus
               className="w-full bg-transparent font-mono text-sm outline-none placeholder:text-muted-foreground"
-              placeholder="Search by #ID or status"
-              aria-label="Search systems by ID or status"
+              placeholder={t("searchSystemsPlaceholder")}
+              aria-label={t("searchSystemsPlaceholder")}
             />
           </label>
         </div>
@@ -1129,7 +1020,7 @@ function Index() {
             ? ranked.filter((s) => isOpenForAnnotate(s)).slice(0, 80)
             : ranked
                 .filter((s) => {
-                  const meta = STATUS_META[s.status] ?? "";
+                  const meta = t(statusMetaKey(s.status));
                   const hay = `${s.id} ${s.status} ${meta}`.toLowerCase();
                   return hay.includes(q) || s.id === q.replace(/^#/, "");
                 })
@@ -1138,8 +1029,8 @@ function Index() {
             return (
               <p className="px-1 py-6 text-center text-sm text-muted-foreground">
                 {q
-                  ? `No systems match “${systemQuery.trim()}”.`
-                  : "No open systems left to annotate in this catalog."}
+                  ? t("systemsNoMatch", { query: systemQuery.trim() })
+                  : t("systemsNoOpen")}
               </p>
             );
           }
@@ -1147,7 +1038,7 @@ function Index() {
             <ListRow
               key={s.id}
               title={`#${s.id}`}
-              meta={STATUS_META[s.status] ?? s.status}
+              meta={t(statusMetaKey(s.status))}
               onClick={() => {
                 setSelected(s.id);
                 setOverlay(null);
@@ -1163,7 +1054,7 @@ function Index() {
       <Sheet
         open={overlay === "inspect"}
         onClose={() => setOverlay(null)}
-        title={selectedLabel || (selected ? `PV-${selected}` : "System")}
+        title={selectedLabel || (selected ? `PV-${selected}` : t("systemFallback"))}
       >
         <div className="space-y-4 pt-1">
           <div className="flex flex-wrap gap-2">
@@ -1172,15 +1063,17 @@ function Index() {
               <StatusTag status={selectedSys.status} full />
             ) : null}
             <StatusPill tone="neutral">
-              {STATUS_META[selectedSys?.status ?? "open"]}
+              {t(statusMetaKey(selectedSys?.status ?? "open"))}
             </StatusPill>
           </div>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {selectedSys
               ? selectedSys.status === "open"
-                ? `Selected photovoltaic system ${selectedLabel}. Trace the fence on aerial imagery, or keep browsing.`
-                : `This system is already ${STATUS_META[selectedSys.status] ?? selectedSys.status}. Pick an open (yellow) system to annotate.`
-              : "Select a PV system on the map."}
+                ? t("inspectOpenBody", { label: selectedLabel ?? "" })
+                : t("inspectClosedBody", {
+                    status: t(statusMetaKey(selectedSys.status)),
+                  })
+              : t("inspectNoSelection")}
           </p>
           {(!selectedSys || isOpenForAnnotate(selectedSys)) && (
             <button
@@ -1191,7 +1084,7 @@ function Index() {
               }}
               className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
             >
-              Trace fenceline
+              {t("traceFenceline")}
             </button>
           )}
         </div>
@@ -1201,17 +1094,17 @@ function Index() {
       <Sheet
         open={overlay === "imagery"}
         onClose={() => setOverlay(null)}
-        title="Imagery & layers"
+        title={t("imageryLayers")}
       >
         <div className="space-y-3 pt-1">
           <ListRow
             title="basemap.de"
-            meta="default country context · underlay until a covering Land DOP paints"
-            trailing={<StatusPill tone="neutral">on</StatusPill>}
+            meta={t("basemapMeta")}
+            trailing={<StatusPill tone="neutral">{t("toggleOn")}</StatusPill>}
           />
           <ListRow
-            title="Maxar satellite"
-            meta={imagery.maxar ? "on · replaces basemap.de" : "off (default)"}
+            title={t("maxarSatellite")}
+            meta={imagery.maxar ? t("maxarOn") : t("maxarOff")}
             trailing={
               <TogglePill
                 on={imagery.maxar}
@@ -1220,12 +1113,8 @@ function Index() {
             }
           />
           <ListRow
-            title="OpenStreetMap"
-            meta={
-              imagery.osm
-                ? "on · only loads at zoom ≤ 14"
-                : "off · optional overlay, max zoom 14"
-            }
+            title={t("openStreetMap")}
+            meta={imagery.osm ? t("osmOn") : t("osmOff")}
             trailing={
               <TogglePill
                 on={imagery.osm}
@@ -1234,13 +1123,16 @@ function Index() {
             }
           />
           <ListRow
-            title="DOP20 · all Länder"
+            title={t("dopAllLaender")}
             meta={
               imagery.ready
                 ? imagery.dopMaster
-                  ? `${imagery.dops.filter((d) => d.enabled).length}/${imagery.dops.length} enabled · z14+`
-                  : "all Land DOPs off"
-                : "loading catalog…"
+                  ? t("dopEnabledMeta", {
+                      enabled: imagery.dops.filter((d) => d.enabled).length,
+                      total: imagery.dops.length,
+                    })
+                  : t("dopAllOff")
+                : t("loadingCatalog")
             }
             trailing={
               <TogglePill
@@ -1251,7 +1143,7 @@ function Index() {
           />
 
           <p className="pt-2 font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            Land DOP services
+            {t("landDopServices")}
           </p>
           <div className="space-y-1">
             {imagery.dops.map((dop) => {
@@ -1272,12 +1164,12 @@ function Index() {
                       )}
                       title={
                         !dop.ok
-                          ? "error"
+                          ? t("dopStatusError")
                           : dop.active
-                            ? "active in view"
+                            ? t("dopStatusActive")
                             : dop.enabled
-                              ? "enabled"
-                              : "off"
+                              ? t("dopStatusEnabled")
+                              : t("dopStatusOff")
                       }
                     />
                     <div className="min-w-0 flex-1">
@@ -1286,18 +1178,18 @@ function Index() {
                       </p>
                       <p className="truncate font-mono text-[11px] text-muted-foreground">
                         {!dop.ok
-                          ? "error"
+                          ? t("dopStatusError")
                           : dop.active
-                            ? `active in view · z${dop.minzoom}+`
+                            ? t("dopActiveMeta", { zoom: dop.minzoom })
                             : dop.enabled
-                              ? `ready · z${dop.minzoom}+`
-                              : "off"}
+                              ? t("dopReadyMeta", { zoom: dop.minzoom })
+                              : t("dopStatusOff")}
                       </p>
                     </div>
                     {!dop.ok && (
                       <button
                         type="button"
-                        aria-label={`Error for ${dop.label}`}
+                        aria-label={t("dopErrorFor", { label: dop.label })}
                         onClick={() => setDopErrorId(showErr ? null : dop.id)}
                         className="grid size-9 shrink-0 place-items-center rounded-full bg-destructive/15 text-destructive"
                       >
@@ -1319,19 +1211,13 @@ function Index() {
             })}
             {!imagery.dops.length && (
               <p className="px-1 py-3 text-sm text-muted-foreground">
-                {imagery.ready
-                  ? "No DOP catalog entries found."
-                  : "Loading DOP catalog…"}
+                {imagery.ready ? t("dopCatalogEmpty") : t("loadingDopCatalog")}
               </p>
             )}
           </div>
 
           <p className="pt-2 text-xs leading-relaxed text-muted-foreground">
-            Default: basemap.de stays visible until a covering Land DOP can
-            paint (enabled, in bounds, at that Land’s minzoom). OSM is optional
-            and never requests tiles above z14. Maxar is off unless you enable
-            it. Green = active in view; lime = enabled; red = probe error (tap
-            ⓘ).
+            {t("imageryHelpBlurb")}
           </p>
         </div>
       </Sheet>
@@ -1340,7 +1226,7 @@ function Index() {
       <Sheet
         open={overlay === "info"}
         onClose={() => setOverlay(null)}
-        title="Info & contribution"
+        title={t("infoContribution")}
       >
         <div className="space-y-4 pt-1">
           <div className="rounded-2xl bg-secondary px-4 py-3">
@@ -1374,16 +1260,18 @@ function Index() {
             />
             <p className="text-sm font-medium">
               {connection === "connected"
-                ? "Synced · all local fences uploaded"
+                ? t("synced")
                 : connection === "loading"
-                  ? "Checking Supabase…"
+                  ? t("checkingSupabase")
                   : connection === "pending"
-                    ? `Uploading local cache… ${countPendingAnnotations()} left (kept across reloads)`
-                    : "Offline — saves stay on this device until online"}
+                    ? t("uploadingLocalLeft", {
+                        count: countPendingAnnotations(),
+                      })
+                    : t("offlineStatus")}
             </p>
           </div>
           <div className="rounded-2xl bg-secondary px-4 py-3 font-mono text-xs">
-            <p className="text-muted-foreground">your fences</p>
+            <p className="text-muted-foreground">{t("yourFences")}</p>
             {savedReady ? (
               <p className="mt-1 text-sm font-semibold">{saved}</p>
             ) : (
@@ -1395,15 +1283,13 @@ function Index() {
             onClick={() => setOverlay("overview")}
             className="h-11 w-full rounded-full bg-secondary text-sm font-semibold"
           >
-            Dataset overview
+            {t("datasetOverview")}
           </button>
           <div className="rounded-2xl bg-secondary px-4 py-4">
             <StatusLegend id="status-legend" />
           </div>
           <p className="text-xs leading-relaxed text-muted-foreground">
-            fency builds open training data for fence detection on German DOP20
-            and Maxar imagery. Every {REVIEW_UNLOCK} annotations unlock
-            reviewing other contributors' work.
+            {t("infoBlurb", { count: REVIEW_UNLOCK })}
           </p>
           {contactMailto ? (
             <button
@@ -1411,7 +1297,7 @@ function Index() {
               onClick={openContact}
               className="h-11 w-full rounded-full bg-secondary text-sm font-semibold"
             >
-              Contact / remove annotations (email)
+              {t("contactRemoveEmail")}
             </button>
           ) : null}
         </div>
@@ -1421,8 +1307,11 @@ function Index() {
       <Sheet
         id="onboarding-sheet"
         open={overlay === "onboarding"}
-        onClose={() => setOverlay(null)}
-        title="What every button does"
+        onClose={() => {
+          annotateAfterOnboardingRef.current = false;
+          setOverlay(null);
+        }}
+        title={t("onboardingTitle")}
       >
         <div className="space-y-4 pt-1 pb-2">
           {ONBOARDING.map(([screen, items]) => (
@@ -1454,15 +1343,13 @@ function Index() {
           ))}
           <div>
             <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              appearance
+              {t("appearance")}
             </p>
             <div className="mt-2">
               <Preferences
                 compact
-                lang={lang}
                 theme={theme}
                 scheme={scheme}
-                onLang={setLang}
                 onTheme={setTheme}
                 onScheme={setScheme}
               />
@@ -1476,15 +1363,15 @@ function Index() {
             }}
             className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
           >
-            Show me on screen
+            {t("onboardingShowTour")}
           </button>
           <button
             id="onboarding-skip-btn"
             type="button"
-            onClick={() => setOverlay(null)}
+            onClick={() => finishOnboarding(true)}
             className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
           >
-            Skip — I'll figure it out
+            {t("onboardingSkip")}
           </button>
         </div>
       </Sheet>
@@ -1494,7 +1381,7 @@ function Index() {
         id="overview-sheet"
         open={overlay === "overview"}
         onClose={() => setOverlay(null)}
-        title="Overview"
+        title={t("overviewTitle")}
       >
         <Overview
           saved={saved}
@@ -1514,7 +1401,7 @@ function Index() {
         elevated
         open={overlay === "leaderboard"}
         onClose={() => setOverlay(null)}
-        title="Leaderboard"
+        title={t("leaderboard")}
       >
         <Leaderboard
           username={username}
@@ -1531,7 +1418,7 @@ function Index() {
         id="what-is-this-sheet"
         open={overlay === "whatisthis"}
         onClose={() => setOverlay(null)}
-        title="What is this?"
+        title={t("whatIsThis")}
       >
         <div className="space-y-4 pt-1">
           <p className="text-sm leading-relaxed text-card-foreground">
@@ -1539,24 +1426,20 @@ function Index() {
           </p>
           <div className="rounded-2xl bg-secondary px-4 py-3">
             <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-              contact
+              {t("contactSection")}
             </p>
-            <p className="mt-1 text-sm">
-              Legal or licensing advice, dataset questions, or a request to
-              remove annotations — email the maintainer privately (opens your
-              mail app). Not posted publicly.
-            </p>
+            <p className="mt-1 text-sm">{t("contactBody")}</p>
             {contactMailto ? (
               <button
                 type="button"
                 onClick={openContact}
                 className="mt-3 h-11 w-full rounded-full bg-lime font-display text-[14px] font-bold text-lime-foreground"
               >
-                Email maintainer
+                {t("emailMaintainer")}
               </button>
             ) : (
               <p className="mt-2 font-mono text-[11px] text-muted-foreground">
-                Contact email not configured — set the EMAIL env / secret.
+                {t("contactNotConfigured")}
               </p>
             )}
           </div>

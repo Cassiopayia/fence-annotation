@@ -621,17 +621,7 @@ export const DrawModule = (() => {
 
   function enterAnnotationMode() {
     if (!draw) return;
-    // Mapbox Draw can report draw_line_string while its internal line is gone —
-    // bounce mode, and retry until the control is ready (map load / remount).
-    const arm = (attempt = 0) => {
-      if (!draw) return;
-      try {
-        forceDrawLineString();
-        if (draw.getMode() === "draw_line_string") return;
-      } catch (_) {}
-      if (attempt < 12) setTimeout(() => arm(attempt + 1), 100 + attempt * 50);
-    };
-    setTimeout(() => arm(0), 50);
+    forceDrawLineString();
   }
 
   function exitAnnotationMode() {
@@ -1618,27 +1608,26 @@ export const DrawModule = (() => {
     map.on('click', (e) => {
       if (!(activeState === 'ANNOTATION' || activeState === 'EDIT') || !draw) return;
 
-      // While drawing: snap click onto exact neighbor coords, then coalesce equals.
+      // While drawing: let Mapbox Draw commit the vertex first, then snap/coalesce.
       if (isAnnotationDrawing()) {
-        const allDraw = draw.getAll();
-        const feat = allDraw.features.length ? allDraw.features[allDraw.features.length - 1] : null;
-        const snap = findSnapTarget(e.point, e.lngLat, feat, 'commit');
+        const point = e.point;
+        const lngLat = e.lngLat;
+        requestAnimationFrame(() => {
+          const allDraw = draw.getAll();
+          const feat = allDraw.features.length ? allDraw.features[allDraw.features.length - 1] : null;
+          const snap = findSnapTarget(point, lngLat, feat, 'commit');
 
-        // Explicit close: tap near the first point → one continuous closed monoline.
-        if (snap?.closeSelf && feat) {
-          e.preventDefault?.();
-          if (forceCloseLineToStart(feat)) {
-            ignoreResumeUntil = Date.now() + 400;
-            selectFinishedFeatures([feat.id]);
-            updateClosureBadge(true);
-            hideSnapTarget();
-            coalesceNearbyDrawVertices();
+          if (snap?.closeSelf && feat) {
+            if (forceCloseLineToStart(feat)) {
+              ignoreResumeUntil = Date.now() + 400;
+              selectFinishedFeatures([feat.id]);
+              updateClosureBadge(true);
+              hideSnapTarget();
+              coalesceNearbyDrawVertices();
+            }
+            return;
           }
-          return;
-        }
 
-        // Always after Draw places the vertex: copy exact dock coords + collapse twins.
-        setTimeout(() => {
           if (snap?.coord) applySnapResult(snap);
           else coalesceNearbyDrawVertices();
           if (!isAnnotationDrawing() && !draw.getAll().features.length) return;
@@ -1650,7 +1639,7 @@ export const DrawModule = (() => {
             selectFinishedFeatures(id != null ? [id] : []);
           }
           hideSnapTarget();
-        }, 0);
+        });
         return;
       }
 
@@ -1669,6 +1658,21 @@ export const DrawModule = (() => {
       //    (one LineString), instead of spawning a separate attached segment.
       const vertexHit = findDrawLineVertexHit(e.point);
       if (vertexHit) {
+        const coords = vertexHit.feature.geometry?.coordinates || [];
+        const idx = coords.findIndex(
+          (c) => c && Math.abs(c[0] - vertexHit.coord[0]) < 1e-9 && Math.abs(c[1] - vertexHit.coord[1]) < 1e-9,
+        );
+        const isEndpoint = idx === 0 || idx === coords.length - 1;
+        // Interior vertex → drag to reposition; endpoints extend the line.
+        if (!isEndpoint && idx > 0) {
+          e.preventDefault?.();
+          activeSelectedFeatureId = vertexHit.feature.id;
+          try {
+            draw.changeMode('direct_select', { featureId: String(vertexHit.feature.id) });
+          } catch (_) {}
+          syncDrawingClass();
+          return;
+        }
         e.preventDefault?.();
         continueDrawingFromFeature(vertexHit.feature, vertexHit.coord);
         return;

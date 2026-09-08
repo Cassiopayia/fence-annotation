@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Share, X } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import {
   canNativeInstall,
   dismissInstallPrompt,
@@ -12,36 +13,31 @@ import {
   type InstallPlatform,
 } from "@/lib/zaun/pwa-install";
 
-function stepsFor(platform: InstallPlatform, nativeReady: boolean): string[] {
+function installSteps(
+  platform: InstallPlatform,
+  nativeReady: boolean,
+  t: ReturnType<typeof useI18n>["t"],
+): string[] {
   if (nativeReady) {
-    return [
-      "Your browser can install this app directly.",
-      "Tap Install below — no Share menu needed.",
-    ];
+    return [t("installStepNative1"), t("installStepNative2")];
   }
   switch (platform) {
     case "ios":
-      return [
-        "Safari only: tap the Share button (square with ↑).",
-        "Scroll and tap “Add to Home Screen”.",
-        "Confirm Add — fency opens full-screen next time.",
-      ];
+      return [t("installStepIos1"), t("installStepIos2"), t("installStepIos3")];
     case "android":
       return [
-        "Open the browser menu (⋮).",
-        "Tap “Install app” or “Add to Home screen”.",
-        "Confirm — then launch from your home screen.",
+        t("installStepAndroid1"),
+        t("installStepAndroid2"),
+        t("installStepAndroid3"),
       ];
     case "desktop":
       return [
-        "Look for the install icon in the address bar (⊕ / monitor+arrow).",
-        "Or use the browser menu → “Install fency…”.",
-        "If you don’t see it yet, keep using the site — Chrome offers install after engagement.",
+        t("installStepDesktop1"),
+        t("installStepDesktop2"),
+        t("installStepDesktop3"),
       ];
     default:
-      return [
-        "Use your browser’s Share or menu → “Add to Home Screen” / “Install app”.",
-      ];
+      return [t("installStepFallback")];
   }
 }
 
@@ -56,6 +52,7 @@ type Props = {
  * Chromium: native beforeinstallprompt when available; iOS: Share → Add to Home Screen.
  */
 export function InstallPrompt({ open, onClose, onDone }: Props) {
+  const { t } = useI18n();
   const [platform] = useState(() => getInstallPlatform());
   const [nativeReady, setNativeReady] = useState(() => canNativeInstall());
   const [busy, setBusy] = useState(false);
@@ -63,9 +60,12 @@ export function InstallPrompt({ open, onClose, onDone }: Props) {
 
   useEffect(() => subscribeInstallAvailability(() => setNativeReady(canNativeInstall())), []);
 
-  if (!open || isStandaloneDisplay()) return null;
+  const steps = useMemo(
+    () => installSteps(platform, nativeReady, t),
+    [platform, nativeReady, t],
+  );
 
-  const steps = stepsFor(platform, nativeReady);
+  if (!open || isStandaloneDisplay()) return null;
 
   const primary = async () => {
     if (nativeReady) {
@@ -95,65 +95,63 @@ export function InstallPrompt({ open, onClose, onDone }: Props) {
   return (
     <div className="absolute inset-0 z-[70] overflow-y-auto overscroll-contain bg-primary/60 px-4 pt-[var(--sat)] pb-[calc(var(--sab)+12px)]">
       <div className="flex min-h-full flex-col justify-end">
-      <div className="space-y-4 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet">
-        <div className="flex items-start justify-between">
-          <Share className="size-8 text-lime-foreground" />
-          <button
-            type="button"
-            onClick={later}
-            aria-label="Close install prompt"
-            className="grid size-9 place-items-center rounded-full bg-destructive text-destructive-foreground"
-          >
-            <X className="size-5" />
-          </button>
-        </div>
-        <h2 className="text-2xl font-semibold leading-tight">
-          Add fency to your Home Screen
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          {platform === "ios"
-            ? "Safari doesn’t auto-prompt — you’ll use Share → Add to Home Screen."
-            : nativeReady
-              ? "Your browser can install this as an app in one tap."
-              : "Browsers offer install when the site is a PWA (manifest + secure origin). Until then, use the steps below."}
-        </p>
-
-        {showHow && (
-          <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">
-            {steps.map((step) => (
-              <li key={step}>{step}</li>
-            ))}
-          </ol>
-        )}
-
-        {!showHow ? (
-          <>
-            <button
-              type="button"
-              disabled={busy}
-              onClick={() => void primary()}
-              className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground disabled:opacity-60"
-            >
-              {nativeReady ? "Install app now" : "Tell me how to install it"}
-            </button>
+        <div className="space-y-4 rounded-[28px] bg-card p-6 text-card-foreground shadow-sheet">
+          <div className="flex items-start justify-between">
+            <Share className="size-8 text-lime-foreground" />
             <button
               type="button"
               onClick={later}
-              className="h-12 w-full rounded-full bg-secondary text-sm font-semibold text-secondary-foreground"
+              aria-label={t("closeInstallPrompt")}
+              className="grid size-9 place-items-center rounded-full bg-destructive text-destructive-foreground"
             >
-              I know where to find it later
+              <X className="size-5" />
             </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={gotIt}
-            className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
-          >
-            Got it
-          </button>
-        )}
-      </div>
+          </div>
+          <h2 className="text-2xl font-semibold leading-tight">{t("installTitle")}</h2>
+          <p className="text-sm text-muted-foreground">
+            {platform === "ios"
+              ? t("installBodyIos")
+              : nativeReady
+                ? t("installBodyNative")
+                : t("installBodyGeneric")}
+          </p>
+
+          {showHow && (
+            <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed">
+              {steps.map((step) => (
+                <li key={step}>{step}</li>
+              ))}
+            </ol>
+          )}
+
+          {!showHow ? (
+            <>
+              <button
+                type="button"
+                disabled={busy}
+                onClick={() => void primary()}
+                className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground disabled:opacity-60"
+              >
+                {nativeReady ? t("installNow") : t("installShowSteps")}
+              </button>
+              <button
+                type="button"
+                onClick={later}
+                className="h-12 w-full rounded-full bg-secondary text-sm font-semibold text-secondary-foreground"
+              >
+                {t("installLater")}
+              </button>
+            </>
+          ) : (
+            <button
+              type="button"
+              onClick={gotIt}
+              className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground"
+            >
+              {t("installGotIt")}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

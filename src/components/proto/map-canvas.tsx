@@ -133,6 +133,9 @@ export function MapCanvas({
   onSystemOpenRef.current = onSystemOpen;
   const onSystemsLoadedRef = useRef(onSystemsLoaded);
   onSystemsLoadedRef.current = onSystemsLoaded;
+  /** User panned/zoomed — skip auto fitBounds until recenter or system change. */
+  const userCameraRef = useRef(false);
+  const lastFitRef = useRef<{ selected?: string; recenterKey: number }>({ recenterKey: 0 });
 
   /* boot MapModule once */
   useEffect(() => {
@@ -185,6 +188,19 @@ export function MapCanvas({
 
     // Map-level click (not layer-bound): reliable on iPhone + desktop.
     map.on("click", pickSystem);
+
+    const onUserCamera = (e: { originalEvent?: Event }) => {
+      if (!e?.originalEvent) return;
+      userCameraRef.current = true;
+      try {
+        map.stop();
+      } catch {
+        /* ignore */
+      }
+    };
+    map.on("zoomstart", onUserCamera);
+    map.on("dragstart", onUserCamera);
+    map.on("rotatestart", onUserCamera);
 
     const mergeCoverage = (incoming: FeatureCollection) => {
       const byId = new Map<string, Feature>();
@@ -290,6 +306,9 @@ export function MapCanvas({
       cancelled = true;
       readyRef.current = false;
       map.off("moveend", reloadAnnotations);
+      map.off("zoomstart", onUserCamera);
+      map.off("dragstart", onUserCamera);
+      map.off("rotatestart", onUserCamera);
       window.removeEventListener("zaun:annotations-changed", onAnnotationsChanged);
       map.remove();
       mapRef.current = null;
@@ -297,12 +316,24 @@ export function MapCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* fly to selected system */
+  /* fly to selected system — only on system change or explicit recenter, not catalog refresh */
+  useEffect(() => {
+    userCameraRef.current = false;
+  }, [selected]);
+
   useEffect(() => {
     const m = mapRef.current;
     if (!m || !selected) return;
-    const sys = systemsRef.current.find((s) => s.id === selected) ?? systems.find((s) => s.id === selected);
+    const sys = systemsRef.current.find((s) => s.id === selected);
     if (!sys?.ring.length) return;
+
+    const explicitRecenter = lastFitRef.current.recenterKey !== recenterKey;
+    const selectedChanged = lastFitRef.current.selected !== selected;
+    if (!explicitRecenter && !selectedChanged) return;
+    if (userCameraRef.current && !explicitRecenter) return;
+
+    lastFitRef.current = { selected, recenterKey };
+    if (explicitRecenter) userCameraRef.current = false;
 
     const lons = sys.ring.map((p) => p[0]);
     const lats = sys.ring.map((p) => p[1]);
@@ -313,11 +344,11 @@ export function MapCanvas({
       ],
       {
         padding: { top: 96, left: 48, right: 48, bottom: bottomPad + 48 },
-        duration: 700,
+        duration: explicitRecenter ? 700 : 450,
         maxZoom: reveal ? 16.6 : 18,
       },
     );
-  }, [selected, recenterKey, reveal, bottomPad, systems]);
+  }, [selected, recenterKey, reveal, bottomPad]);
 
   useEffect(() => {
     MapModule.setPvSystemsVisible?.(pv);

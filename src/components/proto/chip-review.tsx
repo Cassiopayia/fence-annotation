@@ -6,6 +6,7 @@ import { ensureMapLibreWorker } from "@/lib/zaun/maplibre-setup";
 import * as maplibregl from "maplibre-gl";
 import type { StyleSpecification } from "maplibre-gl";
 import { HudButton, ProgressRing, StatusPill } from "./primitives";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 import { featureId, forgetLocalReview, listAnnotations, verifyAnnotation } from "@/lib/zaun/public-api";
 import { authorLabel, currentUsernameOrOmit, ensureAuthSession } from "@/lib/zaun/supabase-client";
@@ -265,6 +266,7 @@ function toItems(fc: FeatureCollection): ReviewItem[] {
  * Swipe → keep, ← reject, ↑ next, ↓ back. Pinch zooms the map.
  */
 export function ChipReview({ onExit }: { onExit: () => void }) {
+  const { t } = useI18n();
   const [items, setItems] = useState<ReviewItem[]>([]);
   const [done, setDone] = useState<ReviewItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -313,7 +315,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         setIndex(0);
       } catch (err) {
         console.error("[ChipReview] load failed", err);
-        if (!cancelled) setError("Could not load annotations for review.");
+        if (!cancelled) setError(t("reviewLoadFailed"));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -525,8 +527,8 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
       visRaw && !["visible", "pending", "hidden", "excluded"].includes(visRaw.toLowerCase())
         ? visRaw
         : null;
-    return [ctx, vis].filter(Boolean).join(" · ") || "saved fence";
-  }, [current]);
+    return [ctx, vis].filter(Boolean).join(" · ") || t("reviewSavedFence");
+  }, [current, t]);
 
   const decide = async (d: "keep" | "reject" | "needs_changes", reason?: string) => {
     if (!current || decision) return;
@@ -564,10 +566,10 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
           setIndex(0);
           return next;
         });
-        setError("Skipped — that fence is yours. You can only review other people’s annotations.");
+        setError(t("reviewSkippedOwn"));
         return;
       }
-      setError(msg || "Review save failed");
+      setError(msg || t("reviewSaveFailed"));
     }
   };
 
@@ -640,14 +642,14 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         <button
           type="button"
           onClick={() => setFlagMode((m) => (m + 1) % (FLAGS.length + 1))}
-          aria-label="Flag tip. Tap to cycle reasons."
+          aria-label={t("reviewFlagAria")}
           className="glass flex max-w-[46%] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 shadow-hud tap-44"
         >
           <AlertCircle className="size-4 shrink-0" />
           {flagMode === 0 ? (
             <span className="font-mono text-[11px] font-semibold">
-              Flag
-              <span className="ml-1 text-muted-foreground">tips</span>
+              {t("reviewFlag")}
+              <span className="ml-1 text-muted-foreground">{t("reviewFlagTips")}</span>
             </span>
           ) : (
             <span className="truncate font-mono text-[11px] font-semibold whitespace-nowrap">
@@ -657,14 +659,14 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         </button>
         <div className="min-w-0 flex-1 text-center">
           <p className="font-mono text-[11px] uppercase tracking-widest text-muted-foreground">
-            annotation review
+            {t("reviewHeading")}
           </p>
           <p className="truncate text-sm font-semibold">
             {queueDone
               ? pool.voted + reviewed > 0
-                ? `Caught up · ${Math.max(reviewed, pool.voted)} reviewed`
-                : "Nothing to review"
-              : `${reviewed} reviewed · ${items.length} left`}
+                ? t("reviewCaughtUp", { count: String(Math.max(reviewed, pool.voted)) })
+                : t("reviewNothing")
+              : t("reviewProgress", { reviewed: String(reviewed), left: String(items.length) })}
           </p>
         </div>
         <ProgressRing
@@ -702,7 +704,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
           <div className="absolute right-3 top-3 z-[2] flex flex-col gap-2">
             <button
               type="button"
-              aria-label="Zoom in"
+              aria-label={t("zoomIn")}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => nudgeZoom(1)}
               className="glass grid size-11 place-items-center rounded-full border border-border shadow-hud"
@@ -711,7 +713,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
             </button>
             <button
               type="button"
-              aria-label="Zoom out"
+              aria-label={t("zoomOut")}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => nudgeZoom(-1)}
               className="glass grid size-11 place-items-center rounded-full border border-border shadow-hud"
@@ -722,20 +724,20 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         )}
         {loading && (
           <div className="absolute inset-0 z-[1] grid place-items-center bg-black/50 text-sm font-medium text-white">
-            Loading annotations…
+            {t("reviewLoading")}
           </div>
         )}
         {!loading && !current && (
           <div className="absolute inset-0 z-[1] grid place-items-center bg-black/60 px-6 text-center text-sm font-medium text-white">
             {pool.voted > 0 || pool.own > 0 || pool.verified > 0 ? (
               <span>
-                You’re caught up.
-                {pool.voted > 0 ? ` ${pool.voted} already reviewed by you.` : ""}
-                {pool.own > 0 ? ` ${pool.own} are yours (others review those).` : ""}
-                {pool.verified > 0 ? ` ${pool.verified} already verified.` : ""}
+                {t("reviewEmptyCaughtUp")}
+                {pool.voted > 0 ? ` ${pool.voted} ${t("reviewEmptyVoted")}.` : ""}
+                {pool.own > 0 ? ` ${pool.own} ${t("reviewEmptyOwn")} ${t("reviewEmptyOwnNote")}.` : ""}
+                {pool.verified > 0 ? ` ${pool.verified} ${t("reviewEmptyVerified")}.` : ""}
               </span>
             ) : (
-              <span>No annotations left to review. Save fences on the map so others can vote keep or reject.</span>
+              <span>{t("reviewEmptyNone")}</span>
             )}
           </div>
         )}
@@ -766,9 +768,9 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
             onClick={() => void decide("reject")}
             className="h-11 min-w-20 rounded-full bg-destructive px-3 font-display text-[14px] font-bold text-destructive-foreground disabled:opacity-40 sm:min-w-24 sm:px-4"
           >
-            Reject
+            {t("reviewReject")}
           </button>
-          <HudButton label="Flag annotation" id="chip-flag-btn" onClick={() => setFlagOpen(true)}>
+          <HudButton label={t("reviewFlagBtn")} id="chip-flag-btn" onClick={() => setFlagOpen(true)}>
             <Flag className="size-5" />
           </HudButton>
           <button
@@ -777,22 +779,22 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
             onClick={() => void decide("keep")}
             className="h-11 min-w-20 rounded-full bg-lime px-3 font-display text-[14px] font-bold text-lime-foreground disabled:opacity-40 sm:min-w-24 sm:px-4"
           >
-            Keep
+            {t("reviewKeep")}
           </button>
         </div>
         <div className="flex items-center justify-center gap-3">
           <HudButton
-            label={fenceVisible ? "Hide annotation overlay" : "Show annotation overlay"}
+            label={fenceVisible ? t("reviewHideOverlay") : t("reviewShowOverlay")}
             disabled={!current}
             active={!fenceVisible}
             onClick={() => setFenceVisible((v) => !v)}
           >
             {fenceVisible ? <Eye className="size-5" /> : <EyeOff className="size-5" />}
           </HudButton>
-          <HudButton label="Undo last decision" onClick={() => setUndoAsk(true)}>
+          <HudButton label={t("reviewUndo")} onClick={() => setUndoAsk(true)}>
             <Undo2 className="size-5" />
           </HudButton>
-          <HudButton label="Close review" onClick={onExit}>
+          <HudButton label={t("reviewClose")} onClick={onExit}>
             <X className="size-5" />
           </HudButton>
         </div>
@@ -801,11 +803,9 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
       {undoAsk && (
         <div className="absolute inset-0 z-10 flex flex-col justify-end bg-primary/45">
           <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[calc(var(--sab)+20px)] text-card-foreground shadow-sheet">
-            <h2 className="text-lg font-semibold">Go back one annotation?</h2>
+            <h2 className="text-lg font-semibold">{t("reviewUndoTitle")}</h2>
             <p className="text-sm text-muted-foreground">
-              {done.length
-                ? "Jump to the previous fence. You can change your vote — the new decision replaces the last one."
-                : "No previous review in this session yet."}
+              {done.length ? t("reviewUndoBody") : t("reviewUndoEmpty")}
             </p>
             <button
               type="button"
@@ -838,14 +838,14 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
               }}
               className="h-12 w-full rounded-full bg-lime font-display text-[15px] font-bold text-lime-foreground disabled:opacity-40"
             >
-              Show previous annotation
+              {t("reviewUndoConfirm")}
             </button>
             <button
               type="button"
               onClick={() => setUndoAsk(false)}
               className="h-11 w-full rounded-full text-sm font-semibold text-muted-foreground"
             >
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </div>
@@ -854,7 +854,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
       {flagOpen && (
         <div className="absolute inset-0 z-10 flex flex-col justify-end bg-primary/45">
           <div className="space-y-3 rounded-t-[28px] bg-card p-5 pb-[calc(var(--sab)+20px)] text-card-foreground shadow-sheet">
-            <h2 className="text-lg font-semibold">Why is this annotation wrong?</h2>
+            <h2 className="text-lg font-semibold">{t("reviewFlagTitle")}</h2>
             <div className="grid gap-2">
               {NEGATIVES.map((n, i) => (
                 <button
@@ -876,7 +876,7 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
               onClick={() => setFlagOpen(false)}
               className="h-12 w-full rounded-full border border-border text-sm font-semibold"
             >
-              Cancel
+              {t("cancel")}
             </button>
           </div>
         </div>

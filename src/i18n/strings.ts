@@ -3,6 +3,8 @@
  * Add new keys here and translate to each supported language.
  */
 
+import { DE_HOME, EN_HOME } from "./strings-home";
+
 export const EN = {
   // Tabs
   tabMap: "Map",
@@ -11,11 +13,17 @@ export const EN = {
 
   // Status / System states
   statusOpen: "Open",
+  statusShortOpen: "open",
   statusMine: "Yours · pending",
+  statusShortMine: "yours",
   statusAwaiting: "Awaiting review",
+  statusShortAwaiting: "awaiting",
   statusVerified: "Verified",
+  statusShortVerified: "verified",
   statusFlagged: "Flagged",
+  statusShortFlagged: "flagged",
   statusExcluded: "Excluded",
+  statusShortExcluded: "excluded",
 
   statusHelpOpen: "Nobody has traced this fenceline yet.",
   statusHelpMine:
@@ -55,7 +63,10 @@ export const EN = {
   colourTheme: "Colour theme",
   colourScheme: "Colour scheme",
   languageAppearance: "Language & appearance",
-  uiEnglishOnly: "UI is English for now. Deutsch is not wired yet.",
+  preferencesHint:
+    "Dark keeps the map readable at night; Auto follows iOS. Schemes retint the whole app — Field stays the highest-contrast option for bright sunlight. Language switches labels only — taxonomy values stay in the dataset schema.",
+  langEnglish: "English",
+  langGerman: "Deutsch",
 
   // Theme labels
   themeLight: "Light",
@@ -84,7 +95,14 @@ export const EN = {
   synced: "Synced · all local fences uploaded",
   checkingSupabase: "Checking Supabase…",
   uploadingLocal: "Uploading local cache…",
+  uploadingLocalLeft:
+    "Uploading local cache… {count} left (kept across reloads)",
   offlineStatus: "Offline — saves stay on this device until online",
+  yourFences: "your fences",
+  datasetOverview: "Dataset overview",
+  appearance: "Appearance",
+  infoBlurb:
+    "fency builds open training data for fence detection on German DOP20 and Maxar imagery. Every {count} annotations unlock reviewing other contributors' work.",
 
   // Overview
   goalPVFence: "Goal: every PV fence",
@@ -119,6 +137,8 @@ export const EN = {
   captchaTitle: "Quick check",
   captchaBody:
     "Complete the CAPTCHA to browse the map and annotate. No account needed — this keeps the shared dataset clear of bots.",
+  captchaExpired: "CAPTCHA expired — try again.",
+  captchaFailed: "CAPTCHA failed — try again.",
 
   // Error pages
   pageNotFound: "Page not found",
@@ -129,6 +149,8 @@ export const EN = {
   somethingWentWrong:
     "Something went wrong on our end. You can try refreshing or head back home.",
   tryAgain: "Try again",
+
+  ...EN_HOME,
 } as const;
 
 export const DE = {
@@ -139,11 +161,17 @@ export const DE = {
 
   // Status / System states
   statusOpen: "Offen",
+  statusShortOpen: "offen",
   statusMine: "Deine · ausstehend",
+  statusShortMine: "deine",
   statusAwaiting: "Ausstehend zur Prüfung",
+  statusShortAwaiting: "ausstehend",
   statusVerified: "Verifiziert",
+  statusShortVerified: "verifiziert",
   statusFlagged: "Markiert",
+  statusShortFlagged: "markiert",
   statusExcluded: "Ausgeschlossen",
+  statusShortExcluded: "ausgeschlossen",
 
   statusHelpOpen: "Noch hat niemand diese Zäunung nachgezeichnet.",
   statusHelpMine:
@@ -183,8 +211,10 @@ export const DE = {
   colourTheme: "Farbtheme",
   colourScheme: "Farbschema",
   languageAppearance: "Sprache & Erscheinungsbild",
-  uiEnglishOnly:
-    "Die Benutzeroberfläche ist derzeit nur auf Englisch. Deutsch ist noch nicht eingebunden.",
+  preferencesHint:
+    "Dunkel hält die Karte nachts lesbar; Automatisch folgt iOS. Schemas färben die ganze App um — Feld bleibt bei hellem Sonnenlicht am kontrastreichsten. Die Sprache ändert nur Beschriftungen — Taxonomiewerte bleiben im Datenschema.",
+  langEnglish: "English",
+  langGerman: "Deutsch",
 
   // Theme labels
   themeLight: "Hell",
@@ -213,8 +243,15 @@ export const DE = {
   synced: "Synchronisiert · alle lokalen Zäunungen hochgeladen",
   checkingSupabase: "Supabase wird überprüft…",
   uploadingLocal: "Lokaler Cache wird hochgeladen…",
+  uploadingLocalLeft:
+    "Lokaler Cache wird hochgeladen… {count} verbleibend (bleibt nach Neuladen erhalten)",
   offlineStatus:
     "Offline · Speicherung bleibt auf diesem Gerät bis zur Verbindung",
+  yourFences: "deine Zäunungen",
+  datasetOverview: "Datensatz-Übersicht",
+  appearance: "Erscheinungsbild",
+  infoBlurb:
+    "fency baut offene Trainingsdaten für Zaunerkennung auf deutschen DOP20- und Maxar-Bildern. Alle {count} Markierungen schalten die Prüfung fremder Beiträge frei.",
 
   // Overview
   goalPVFence: "Ziel: jede PV-Zäunung",
@@ -249,14 +286,18 @@ export const DE = {
   captchaTitle: "Schnellprüfung",
   captchaBody:
     "Schließe die CAPTCHA ab, um die Karte zu durchsuchen und zu markieren. Kein Konto erforderlich — dies hält den gemeinsamen Datensatz sauber.",
+  captchaExpired: "CAPTCHA abgelaufen — bitte erneut versuchen.",
+  captchaFailed: "CAPTCHA fehlgeschlagen — bitte erneut versuchen.",
 
   // Error pages
   pageNotFound: "Seite nicht gefunden",
   pageNotFoundDesc:
-    "Die Seite, die Sie suchen, existiert nicht oder wurde verschoben.",
-  goHome: "Zurück nach Hause",
+    "Die Seite, die du suchst, existiert nicht oder wurde verschoben.",
+  goHome: "Zur Startseite",
   thisPageDidntLoad: "Diese Seite konnte nicht geladen werden",
   somethingWentWrong:
-    "Auf unserer Seite ist etwas schiefgelaufen. Versuchen Sie es mit einem Neuladen oder gehen Sie zurück nach Hause.",
+    "Bei uns ist etwas schiefgelaufen. Lade die Seite neu oder kehre zur Startseite zurück.",
   tryAgain: "Erneut versuchen",
+
+  ...DE_HOME,
 } as const;

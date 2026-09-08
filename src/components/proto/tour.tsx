@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ArrowLeft, ArrowRight, X } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 export type TourStep = {
@@ -30,6 +31,7 @@ export function Tour({
   onClose: () => void;
   onFinish?: () => void;
 }) {
+  const { t } = useI18n();
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [cardH, setCardH] = useState(180);
@@ -195,7 +197,7 @@ export function Tour({
             id="tour-skip-btn"
             type="button"
             onClick={onClose}
-            aria-label="Skip the tour"
+            aria-label={t("tourSkipAria")}
             className="grid size-9 shrink-0 place-items-center rounded-full bg-secondary"
           >
             <X className="size-4" />
@@ -220,14 +222,14 @@ export function Tour({
             type="button"
             disabled={i === 0}
             onClick={() => setI((v) => Math.max(0, v - 1))}
-            aria-label="Previous step"
+            aria-label={t("tourPrev")}
             className="grid size-11 place-items-center rounded-full bg-secondary disabled:opacity-40"
           >
             <ArrowLeft className="size-5" />
           </button>
           {step.awaitTap ? (
             <span className="shrink-0 rounded-full bg-lime/15 px-3 py-2 text-[12px] font-semibold text-lime-foreground">
-              {step.tapHint ?? "Tap it to continue"}
+              {step.tapHint ?? t("tourTapToContinue")}
             </span>
           ) : last ? (
             <button
@@ -236,14 +238,14 @@ export function Tour({
               onClick={() => (onFinish ? onFinish() : onClose())}
               className="h-11 shrink-0 rounded-full bg-lime px-5 font-display text-[14px] font-bold text-lime-foreground"
             >
-              Start annotating
+              {t("tourFinish")}
             </button>
           ) : (
             <button
               id="tour-next-btn"
               type="button"
               onClick={() => setI((v) => v + 1)}
-              aria-label="Next step"
+              aria-label={t("tourNext")}
               className="grid size-11 place-items-center rounded-full bg-lime text-lime-foreground"
             >
               <ArrowRight className="size-5" />

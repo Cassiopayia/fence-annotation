@@ -1,6 +1,7 @@
 import type { ReactNode, PointerEvent as ReactPointerEvent } from "react";
 import { useEffect, useRef, useState } from "react";
 import { Info } from "lucide-react";
+import { useI18n } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 /**
@@ -28,6 +29,7 @@ export function InfoPill({
   connection?: "connected" | "loading" | "offline" | "pending";
   id?: string;
 }) {
+  const { t } = useI18n();
   const [mode, setMode] = useState(0);
   const step = () => {
     if (mode === 2 || (mode === 1 && !ha && !systemLabel)) {
@@ -39,13 +41,25 @@ export function InfoPill({
   };
 
   const offlineish = connection === "offline" || connection === "pending";
+  const connectionText =
+    connection === "connected"
+      ? t("connectedStatus")
+      : connection === "loading"
+        ? t("loadingStatus")
+        : connection === "pending"
+          ? t("pendingStatus")
+          : t("connOffline");
+
+  const detail = [connectionText, zoom, service, systemLabel, ha]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <button
       id={id}
       type="button"
       onClick={step}
-      aria-label={`Info — ${connection}, ${zoom}, ${service}${systemLabel ? `, ${systemLabel}` : ""}${ha ? `, ${ha}` : ""}. Tap for more detail.`}
+      aria-label={t("infoPillAria", { detail })}
       className="glass flex items-center gap-2 rounded-full border border-border px-3 py-2 tap-44"
     >
       <span
@@ -96,6 +110,7 @@ export function ProgressRing({
   /** Override the center label (defaults to value). */
   center?: ReactNode;
 }) {
+  const { t } = useI18n();
   const r = 16;
   const c = 2 * Math.PI * r;
   const pct = complete ? 1 : Math.min(1, max > 0 ? value / max : 0);
@@ -107,8 +122,8 @@ export function ProgressRing({
       onClick={onClick}
       aria-label={
         complete
-          ? "Review queue complete"
-          : `Contribution progress: ${value} of ${max} annotations`
+          ? t("progressRingComplete")
+          : t("progressRingAria", { value, max })
       }
       className={cn(
         "glass relative grid size-11 place-items-center rounded-full",
@@ -223,6 +238,7 @@ export function Sheet({
   /** lifts the sheet above the greeting and install overlays */
   elevated?: boolean;
 }) {
+  const { t } = useI18n();
   const [expanded, setExpanded] = useState(full);
   const [dragY, setDragY] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -323,7 +339,9 @@ export function Sheet({
           <div
             role="button"
             aria-expanded={expanded}
-            aria-label={expanded ? "Drag down to shrink or close" : "Drag up for full screen, down to close"}
+            aria-label={
+              expanded ? t("sheetGrabberAriaExpanded") : t("sheetGrabberAriaCollapsed")
+            }
             tabIndex={open ? 0 : -1}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
@@ -343,8 +361,8 @@ export function Sheet({
             <div className="h-1.5 w-10 rounded-full bg-border" aria-hidden />
             <span className="sr-only">
               {expanded
-                ? "Sheet expanded. Drag down to shrink, further to close."
-                : "Drag up to expand sheet full screen, or down to close."}
+                ? t("sheetGrabberSrExpanded")
+                : t("sheetGrabberSrCollapsed")}
             </span>
           </div>
         )}
@@ -360,7 +378,7 @@ export function Sheet({
             <button
               type="button"
               onClick={onClose}
-              aria-label="Close"
+              aria-label={t("close")}
               className="grid size-9 place-items-center rounded-full bg-secondary text-secondary-foreground"
               onPointerDown={(e) => e.stopPropagation()}
             >
@@ -422,13 +440,14 @@ export function CyclePill({
   id?: string;
   className?: string;
 }) {
+  const { t } = useI18n();
   const next = () => onChange(options[(options.indexOf(value) + 1) % options.length] ?? value);
   return (
     <button
       id={id}
       type="button"
       onClick={next}
-      aria-label={`${label}: ${value}. Tap to cycle.`}
+      aria-label={t("cyclePillAria", { label, value })}
       className={cn(
         "flex min-w-0 flex-1 items-center justify-between gap-2 rounded-full bg-secondary px-3 py-2 text-left tap-44",
         className,
@@ -447,20 +466,23 @@ export function CyclePill({
 export function TogglePill({
   on,
   onClick,
-  labelOn = "on",
-  labelOff = "off",
+  labelOn,
+  labelOff,
 }: {
   on: boolean;
   onClick?: () => void;
   labelOn?: string;
   labelOff?: string;
 }) {
+  const { t } = useI18n();
+  const onLabel = labelOn ?? t("toggleOn");
+  const offLabel = labelOff ?? t("toggleOff");
   return (
     <button
       type="button"
       role="switch"
       aria-checked={on}
-      aria-label={on ? labelOn : labelOff}
+      aria-label={on ? onLabel : offLabel}
       onClick={(e) => {
         e.stopPropagation();
         onClick?.();

@@ -2,8 +2,9 @@ import { createContext, useContext, useEffect, useState } from "react";
 import { EN, DE } from "./strings";
 
 export type Lang = "en" | "de";
+export type TranslationKey = keyof typeof EN;
 
-type TranslationDict = Record<string, string>;
+type TranslationDict = Record<TranslationKey, string>;
 
 const translations: Record<Lang, TranslationDict> = {
   en: { ...EN },
@@ -13,17 +14,31 @@ const translations: Record<Lang, TranslationDict> = {
 type I18nContextType = {
   lang: Lang;
   setLang: (l: Lang) => void;
-  t: (key: string) => string;
+  t: (key: TranslationKey, vars?: Record<string, string | number>) => string;
 };
 
 const I18nContext = createContext<I18nContextType | null>(null);
 
-const STORAGE_KEY = "i18n.lang";
+export const I18N_STORAGE_KEY = "i18n.lang";
+
+function translate(
+  lang: Lang,
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+): string {
+  let value = translations[lang][key] ?? translations.en[key] ?? key;
+  if (vars) {
+    for (const [name, val] of Object.entries(vars)) {
+      value = value.replace(`{${name}}`, String(val));
+    }
+  }
+  return value;
+}
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
+      const stored = localStorage.getItem(I18N_STORAGE_KEY);
       return stored === "de" || stored === "en" ? stored : "en";
     } catch {
       return "en";
@@ -33,15 +48,14 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   const setLang = (l: Lang) => {
     setLangState(l);
     try {
-      localStorage.setItem(STORAGE_KEY, l);
+      localStorage.setItem(I18N_STORAGE_KEY, l);
     } catch (err) {
       console.error("Failed to persist language:", err);
     }
   };
 
-  const t = (key: string) => {
-    return translations[lang][key] ?? translations.en[key] ?? key;
-  };
+  const t = (key: TranslationKey, vars?: Record<string, string | number>) =>
+    translate(lang, key, vars);
 
   useEffect(() => {
     document.documentElement.lang = lang;
@@ -62,11 +76,15 @@ export function useI18n() {
   return ctx;
 }
 
-export function t(key: string): string {
+/** Non-React fallback (SSR / error boundaries before hydration). */
+export function t(
+  key: TranslationKey,
+  vars?: Record<string, string | number>,
+): string {
   try {
-    const lang = localStorage.getItem(STORAGE_KEY) as Lang | null;
-    return translations[lang ?? "en"][key] ?? translations.en[key] ?? key;
+    const lang = localStorage.getItem(I18N_STORAGE_KEY) as Lang | null;
+    return translate(lang ?? "en", key, vars);
   } catch {
-    return translations.en[key] ?? key;
+    return translate("en", key, vars);
   }
 }

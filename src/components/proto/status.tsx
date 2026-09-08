@@ -8,7 +8,7 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react";
-import { useI18n } from "@/i18n/context";
+import { useI18n, type TranslationKey } from "@/i18n/context";
 import { cn } from "@/lib/utils";
 
 /**
@@ -26,69 +26,84 @@ export type SystemStatus =
   | "flagged"
   | "excluded";
 
-type Meta = {
-  label: string;
-  short: string;
+type StyleMeta = {
   icon: LucideIcon;
   /** css var holding the status hue */
   token: string;
   /** map fill treatment */
   fill: "none" | "hatch" | "solid";
   dash?: string;
-  help: string;
 };
 
-export const STATUS: Record<SystemStatus, Meta> = {
+const STATUS_I18N: Record<
+  SystemStatus,
+  { label: TranslationKey; short: TranslationKey; help: TranslationKey }
+> = {
   open: {
-    label: "Open",
-    short: "open",
+    label: "statusOpen",
+    short: "statusShortOpen",
+    help: "statusHelpOpen",
+  },
+  mine: {
+    label: "statusMine",
+    short: "statusShortMine",
+    help: "statusHelpMine",
+  },
+  awaiting: {
+    label: "statusAwaiting",
+    short: "statusShortAwaiting",
+    help: "statusHelpAwaiting",
+  },
+  verified: {
+    label: "statusVerified",
+    short: "statusShortVerified",
+    help: "statusHelpVerified",
+  },
+  flagged: {
+    label: "statusFlagged",
+    short: "statusShortFlagged",
+    help: "statusHelpFlagged",
+  },
+  excluded: {
+    label: "statusExcluded",
+    short: "statusShortExcluded",
+    help: "statusHelpExcluded",
+  },
+};
+
+export const STATUS: Record<SystemStatus, StyleMeta> = {
+  open: {
     icon: Circle,
     token: "--st-open",
     fill: "none",
     dash: "6 5",
-    help: "Nobody has traced this fenceline yet.",
   },
   mine: {
-    label: "Yours · pending",
-    short: "yours",
     icon: Clock,
     token: "--st-mine",
     fill: "hatch",
-    help: "You annotated it. It stays pending until a second person confirms.",
   },
   awaiting: {
-    label: "Awaiting review",
-    short: "awaiting",
     icon: Users,
     token: "--st-awaiting",
     fill: "hatch",
-    help: "Someone else already traced this. It waits for a second person to confirm before it counts as verified.",
   },
   verified: {
-    label: "Verified",
-    short: "verified",
     icon: CheckCheck,
     token: "--st-verified",
     fill: "solid",
-    help: "Confirmed by two reviewers — it goes into the training set.",
   },
   flagged: {
-    label: "Flagged",
-    short: "flagged",
     icon: AlertTriangle,
     token: "--st-flagged",
     fill: "hatch",
     dash: "3 3",
-    help: "Reviewers disagreed or the imagery is unusable. Needs a second look.",
   },
   excluded: {
-    label: "Excluded",
-    short: "excluded",
     icon: Ban,
     token: "--st-excluded",
     fill: "none",
     dash: "2 4",
-    help: "Marked unsuitable for training and kept out of the export.",
   },
 };
 
@@ -100,6 +115,16 @@ export const STATUS_ORDER: SystemStatus[] = [
   "flagged",
   "excluded",
 ];
+
+export function useStatusCopy(status: SystemStatus) {
+  const { t } = useI18n();
+  const keys = STATUS_I18N[status];
+  return {
+    label: t(keys.label),
+    short: t(keys.short),
+    help: t(keys.help),
+  };
+}
 
 /** Small circular badge — icon + hue, sized for a list row. */
 export function StatusDot({
@@ -147,6 +172,7 @@ export function StatusTag({
   className?: string;
 }) {
   const m = STATUS[status];
+  const copy = useStatusCopy(status);
   const Icon = m.icon;
   return (
     <span
@@ -161,7 +187,7 @@ export function StatusTag({
       )}
     >
       <Icon className="size-3" strokeWidth={3} />
-      {full ? m.label : m.short}
+      {full ? copy.label : copy.short}
     </span>
   );
 }
@@ -176,17 +202,20 @@ export function StatusLegend({ id }: { id?: string }) {
         {t("mapLegend")}
       </p>
       <ul className="space-y-2.5">
-        {STATUS_ORDER.map((s) => (
-          <li key={s} className="flex items-start gap-3">
-            <StatusDot status={s} className="mt-0.5" />
-            <div className="min-w-0">
-              <p className="text-[13px] font-semibold">{STATUS[s].label}</p>
-              <p className="text-[12px] leading-snug text-muted-foreground">
-                {STATUS[s].help}
-              </p>
-            </div>
-          </li>
-        ))}
+        {STATUS_ORDER.map((s) => {
+          const keys = STATUS_I18N[s];
+          return (
+            <li key={s} className="flex items-start gap-3">
+              <StatusDot status={s} className="mt-0.5" />
+              <div className="min-w-0">
+                <p className="text-[13px] font-semibold">{t(keys.label)}</p>
+                <p className="text-[12px] leading-snug text-muted-foreground">
+                  {t(keys.help)}
+                </p>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
