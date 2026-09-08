@@ -19,7 +19,12 @@ import { cn } from "@/lib/utils";
  * readable for red-green colour vision deficiency and in bright sunlight.
  */
 export type SystemStatus =
-  "open" | "mine" | "awaiting" | "verified" | "flagged" | "excluded";
+  | "open"
+  | "mine"
+  | "awaiting"
+  | "verified"
+  | "flagged"
+  | "excluded";
 
 type Meta = {
   label: string;
