@@ -402,8 +402,20 @@ export function setOsmEnabled(on: boolean) {
   applyVisibility();
 }
 
+let boundMap = null;
+const onMapViewChange = () => applyVisibility();
+
 export async function initImageryService(mlMap) {
+  if (boundMap === mlMap) {
+    applyVisibility();
+    return getImagerySnapshot();
+  }
+  if (boundMap) {
+    boundMap.off?.("moveend", onMapViewChange);
+    boundMap.off?.("zoomend", onMapViewChange);
+  }
   map = mlMap;
+  boundMap = mlMap;
   ready = false;
   try {
     map.setMaxParallelImageRequests?.(10);
@@ -427,8 +439,8 @@ export async function initImageryService(mlMap) {
   osmOn = false;
   applyVisibility();
   ready = true;
-  map.on?.("moveend", () => applyVisibility());
-  map.on?.("zoomend", () => applyVisibility());
+  map.on?.("moveend", onMapViewChange);
+  map.on?.("zoomend", onMapViewChange);
   notify();
   return getImagerySnapshot();
 }

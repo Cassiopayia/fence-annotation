@@ -6,7 +6,7 @@ import type { DatasetStats } from "@/components/proto/overview";
 import type { BoardRow } from "@/components/proto/leaderboard";
 import type { WelcomeStats } from "@/components/proto/welcome-back";
 import {
-  countMyAnnotations,
+  applyAnnotationCoverageToSystems,
   fetchLeaderboard,
   listAnnotations,
   listSystems,
@@ -304,24 +304,6 @@ function Index() {
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      try {
-        const n = await countMyAnnotations();
-        if (!cancelled) {
-          setSaved(n);
-          setSavedReady(true);
-        }
-      } catch {
-        if (!cancelled) setSavedReady(true);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    let cancelled = false;
-    void (async () => {
       setStatsLoading(true);
       setBoardLoading(true);
       try {
@@ -331,8 +313,11 @@ function Index() {
           listAnnotations().catch(() => null),
         ]);
         if (cancelled) return;
+        const covered = sysFc && annFc
+          ? applyAnnotationCoverageToSystems(sysFc, annFc)
+          : sysFc;
         const features =
-          (sysFc as { features?: unknown[] } | null)?.features || [];
+          (covered as { features?: unknown[] } | null)?.features || [];
         const total = features.length || null;
         let annotated = 0;
         let flaggedLocal = 0;
@@ -352,6 +337,14 @@ function Index() {
           if (p.status === "flagged" || p.fence_status === "flagged")
             flaggedLocal += 1;
         }
+        const savedCount = (
+          (annFc as { features?: { properties?: Record<string, unknown> }[] } | null)?.features || []
+        ).filter((f) => {
+          const p = f.properties || {};
+          return p.is_own === true || p.is_own === "true";
+        }).length;
+        setSaved(savedCount);
+        setSavedReady(true);
         let chipsReviewed = 0;
         let flagVotes = 0;
         for (const f of (

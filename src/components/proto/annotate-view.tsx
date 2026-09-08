@@ -6,7 +6,7 @@ import { CyclePill, HudButton, InfoPill } from "./primitives";
 import { cn } from "@/lib/utils";
 import { DrawModule } from "@/lib/zaun/draw";
 import { MapModule } from "@/lib/zaun/map";
-import { listAnnotations, saveAnnotation } from "@/lib/zaun/public-api";
+import { saveAnnotation } from "@/lib/zaun/public-api";
 import { useMapHudInfo } from "@/hooks/use-map-hud-info";
 
 const CONTEXT = ["Rural", "Urban", "Complex"];
@@ -115,13 +115,6 @@ export function AnnotateView({
     DrawModule.setActiveState("ANNOTATION");
   };
 
-  const refreshAnnotations = async () => {
-    try {
-      MapModule.setAnnotations(await listAnnotations());
-      window.dispatchEvent(new CustomEvent("zaun:annotations-changed"));
-    } catch (_) {}
-  };
-
   const commit = () => {
     // Glue near-touching segments into one line before reading geometry.
     try { DrawModule.mergeAllConnectedDrawLines?.(); } catch (_) {}
@@ -147,11 +140,10 @@ export function AnnotateView({
         link_systems: true,
       },
     })
-      .then(async (feature) => {
+      .then((feature) => {
         DrawModule.clearAll();
         setDrawn(false);
         setClosed(false);
-        await refreshAnnotations();
         if (feature?.properties?.sync_state === "pending") {
           setSaveError(t("savePendingSync"));
         }
@@ -186,11 +178,10 @@ export function AnnotateView({
         link_systems: false,
       },
     })
-      .then(async (feature) => {
+      .then((feature) => {
         DrawModule.clearAll();
         setDrawn(false);
         setClosed(false);
-        await refreshAnnotations();
         if (feature?.properties?.sync_state === "pending") {
           setSaveError(t("savePendingSync"));
         }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import type { Map as MlMap } from "maplibre-gl";
 import type { Feature, FeatureCollection } from "geojson";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -6,7 +6,7 @@ import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 
 import { MapModule } from "@/lib/zaun/map";
 import { DrawModule } from "@/lib/zaun/draw";
-import { boundsFromMap, listAnnotations, listSystems, applyAnnotationCoverageToSystems, featureId, filterSystemsForAnnotate } from "@/lib/zaun/public-api";
+import { boundsFromMap, listAnnotations, listSystems, applyAnnotationCoverageToSystems, featureId, filterSystemsForAnnotate, reapplySystemStatuses } from "@/lib/zaun/public-api";
 import { loadDopCatalog } from "@/lib/zaun/wms-client";
 import { initImageryService } from "@/lib/zaun/imagery-service";
 import { authorLabel, currentUsernameOrOmit } from "@/lib/zaun/supabase-client";
@@ -123,10 +123,9 @@ export function MapCanvas({
   const readyRef = useRef(false);
   const systemsRef = useRef<Sys[]>(SYSTEMS);
   const systemsCatalogRef = useRef<FeatureCollection | null>(null);
-  /** Accumulated annotations for PV coverage (so pan doesn't drop awaiting claims). */
-  const coverageAnnRef = useRef<FeatureCollection>({ type: "FeatureCollection", features: [] });
+  /** Accumulated annotations — viewport fetches merge in instead of replacing. */
+  const annAccumRef = useRef<FeatureCollection>({ type: "FeatureCollection", features: [] });
   const lastCoveredRef = useRef<FeatureCollection | null>(null);
-  const [systems, setSystems] = useState<Sys[]>(SYSTEMS);
   const drawingRef = useRef(drawing);
   drawingRef.current = drawing;
   const onSelectRef = useRef(onSelect);
@@ -138,6 +137,9 @@ export function MapCanvas({
   /** User panned/zoomed — skip auto fitBounds until recenter or system change. */
   const userCameraRef = useRef(false);
   const lastFitRef = useRef<{ selected?: string; recenterKey: number }>({ recenterKey: 0 });
+  /** Skip viewport reload right after programmatic fitBounds. */
+  const suppressMoveendRef = useRef(0);
+  const reloadGenerationRef = useRef(0);
 
   /* boot MapModule once */
   useEffect(() => {
@@ -204,21 +206,28 @@ export function MapCanvas({
     map.on("dragstart", onUserCamera);
     map.on("rotatestart", onUserCamera);
 
-    const mergeCoverage = (incoming: FeatureCollection) => {
+    const mergeAnnotations = (incoming: FeatureCollection): { fc: FeatureCollection; changed: boolean } => {
+      let changed = false;
       const byId = new Map<string, Feature>();
-      for (const f of coverageAnnRef.current.features || []) {
+      for (const f of annAccumRef.current.features || []) {
         const id = featureId(f);
         if (id) byId.set(id, f);
       }
       for (const f of incoming.features || []) {
         const id = featureId(f);
-        if (id) byId.set(id, f);
+        if (!id) continue;
+        if (!byId.has(id)) changed = true;
+        else {
+          const prev = byId.get(id)!;
+          const prevSync = String(prev.properties?.sync_state || "");
+          const nextSync = String(f.properties?.sync_state || "");
+          if (prevSync !== nextSync) changed = true;
+        }
+        byId.set(id, f);
       }
-      coverageAnnRef.current = {
-        type: "FeatureCollection",
-        features: [...byId.values()],
-      };
-      return coverageAnnRef.current;
+      const fc: FeatureCollection = { type: "FeatureCollection", features: [...byId.values()] };
+      annAccumRef.current = fc;
+      return { fc, changed };
     };
 
     const pushSystemsToMap = (covered: FeatureCollection) => {
@@ -241,9 +250,15 @@ export function MapCanvas({
         .filter((s): s is Sys => Boolean(s));
       if (parsed.length) {
         systemsRef.current = parsed;
-        setSystems(parsed);
         onSystemsLoadedRef.current?.(parsed);
       }
+    };
+
+    const applyAnnotationUpdate = (incoming: FeatureCollection, forceCoverage = false) => {
+      const { fc, changed } = mergeAnnotations(incoming);
+      MapModule.setAnnotations(fc);
+      MapModule.setAnnotationsVisible?.(true);
+      if (forceCoverage || changed) paintCoverage(fc);
     };
 
     const boot = async () => {
@@ -260,11 +275,8 @@ export function MapCanvas({
         if (cancelled) return;
 
         systemsCatalogRef.current = systemsFc as FeatureCollection;
-        const coverage = mergeCoverage(annotations as FeatureCollection);
-        MapModule.setAnnotations(annotations);
+        applyAnnotationUpdate(annotations as FeatureCollection, true);
         MapModule.setPvSystemsVisible?.(true);
-        MapModule.setAnnotationsVisible?.(true);
-        paintCoverage(coverage);
         if (Array.isArray(catalog) && catalog.length) {
           MapModule.setDopCoverageFromCatalog(catalog);
         }
@@ -281,26 +293,43 @@ export function MapCanvas({
 
     const reloadAnnotations = () => {
       if (cancelled || !readyRef.current || drawingRef.current) return;
+      if (Date.now() - suppressMoveendRef.current < 800) return;
+      const gen = ++reloadGenerationRef.current;
       void listAnnotations(boundsFromMap(map))
         .then((fc) => {
-          if (cancelled) return;
-          MapModule.setAnnotations(fc);
-          MapModule.setAnnotationsVisible?.(true);
-          paintCoverage(mergeCoverage(fc as FeatureCollection));
+          if (cancelled || gen !== reloadGenerationRef.current) return;
+          applyAnnotationUpdate(fc as FeatureCollection);
         })
         .catch(() => {});
     };
 
-    const onAnnotationsChanged = () => {
+    const onAnnotationsChanged = (ev: Event) => {
       if (cancelled || !readyRef.current) return;
-      void listAnnotations()
-        .then((fc) => {
-          if (cancelled) return;
-          MapModule.setAnnotations(fc);
-          MapModule.setAnnotationsVisible?.(true);
-          paintCoverage(mergeCoverage(fc as FeatureCollection));
-        })
-        .catch(() => {});
+      const detail = (ev as CustomEvent)?.detail || {};
+      if (detail.feature) {
+        applyAnnotationUpdate({
+          type: "FeatureCollection",
+          features: [detail.feature as Feature],
+        });
+        return;
+      }
+      if (detail.fc?.features) {
+        applyAnnotationUpdate(detail.fc as FeatureCollection, true);
+        return;
+      }
+      reloadAnnotations();
+    };
+
+    const onSystemsChanged = () => {
+      if (cancelled || !systemsCatalogRef.current) return;
+      systemsCatalogRef.current = reapplySystemStatuses(systemsCatalogRef.current);
+      paintCoverage(annAccumRef.current);
+    };
+
+    let moveEndTimer = 0;
+    const scheduleReload = () => {
+      window.clearTimeout(moveEndTimer);
+      moveEndTimer = window.setTimeout(reloadAnnotations, 280);
     };
 
     map.once("load", () => {
@@ -311,17 +340,20 @@ export function MapCanvas({
       }
     });
 
-    map.on("moveend", reloadAnnotations);
+    map.on("moveend", scheduleReload);
     window.addEventListener("zaun:annotations-changed", onAnnotationsChanged);
+    window.addEventListener("zaun:systems-changed", onSystemsChanged);
 
     return () => {
       cancelled = true;
       readyRef.current = false;
-      map.off("moveend", reloadAnnotations);
+      window.clearTimeout(moveEndTimer);
+      map.off("moveend", scheduleReload);
       map.off("zoomstart", onUserCamera);
       map.off("dragstart", onUserCamera);
       map.off("rotatestart", onUserCamera);
       window.removeEventListener("zaun:annotations-changed", onAnnotationsChanged);
+      window.removeEventListener("zaun:systems-changed", onSystemsChanged);
       map.remove();
       mapRef.current = null;
     };
@@ -347,6 +379,7 @@ export function MapCanvas({
     lastFitRef.current = { selected, recenterKey };
     if (explicitRecenter) userCameraRef.current = false;
 
+    suppressMoveendRef.current = Date.now();
     const lons = sys.ring.map((p) => p[0]);
     const lats = sys.ring.map((p) => p[1]);
     m.fitBounds(

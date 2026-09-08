@@ -233,9 +233,8 @@ function applyLocalReviewMemory(fc) {
       if (!id) return feature;
       const props = { ...(feature.properties || {}) };
       const local = decisions.get(id);
-      if (!String(props.my_decision || '').trim()) {
-        if (local?.mine) props.my_decision = local.mine;
-        else if (reviewed.has(id)) props.my_decision = local?.mine || 'confirm';
+      if (!String(props.my_decision || '').trim() && local?.mine) {
+        props.my_decision = local.mine;
       }
       if (owned.has(id) && props.is_own !== true) {
         props.is_own = true;
@@ -492,6 +491,73 @@ let remoteSystemFlagsPromise = null;
 let remoteSystemFlagsCache = null;
 /** Serialize concurrent flush calls (connection-status also guards its hook). */
 let flushPendingPromise = null;
+/** Dedupe concurrent viewport / world annotation reads. */
+const annotationsInflight = new Map();
+
+function isWorldBounds(bounds) {
+  return Math.abs(Number(bounds?.west) - WORLD_BOUNDS.west) < 1
+    && Math.abs(Number(bounds?.east) - WORLD_BOUNDS.east) < 1;
+}
+
+function boundsCacheKey(bounds) {
+  if (isWorldBounds(bounds)) return 'world';
+  const w = Number(bounds.west);
+  const s = Number(bounds.south);
+  const e = Number(bounds.east);
+  const n = Number(bounds.north);
+  return `${w.toFixed(3)},${s.toFixed(3)},${e.toFixed(3)},${n.toFixed(3)}`;
+}
+
+function cloneSystemsFc(fc) {
+  return {
+    type: fc?.type || 'FeatureCollection',
+    features: (fc?.features || []).map((feature) => ({
+      ...feature,
+      properties: { ...(feature.properties || {}) },
+    })),
+  };
+}
+
+function featureVisibleInBounds(feature, bounds) {
+  const props = feature?.properties || {};
+  if (props.is_own === true || props.is_own === 'true') return true;
+  if (props.sync_state === 'pending' || props.sync_state === 'local') return true;
+  const id = featureId(feature);
+  if (id && readOwnedIds().has(id)) return true;
+  if (isWorldBounds(bounds)) return true;
+  try {
+    const box = turf.bbox(feature);
+    return box[0] <= Number(bounds.east)
+      && box[2] >= Number(bounds.west)
+      && box[1] <= Number(bounds.north)
+      && box[3] >= Number(bounds.south);
+  } catch (_) {
+    return true;
+  }
+}
+
+function filterLocalForBounds(features, bounds) {
+  if (isWorldBounds(bounds)) return features || [];
+  return (features || []).filter((feature) => featureVisibleInBounds(feature, bounds));
+}
+
+export function notifyAnnotationsChanged(detail = {}) {
+  try {
+    window.dispatchEvent(new CustomEvent('zaun:annotations-changed', { detail }));
+  } catch (_) {}
+}
+
+export function notifySystemsChanged(detail = {}) {
+  try {
+    window.dispatchEvent(new CustomEvent('zaun:systems-changed', { detail }));
+  } catch (_) {}
+}
+
+/** Re-read device-local + remote system flags onto a catalog snapshot. */
+export function reapplySystemStatuses(catalogFc) {
+  if (!catalogFc?.features) return catalogFc;
+  return applySystemStatuses(cloneSystemsFc(catalogFc), remoteSystemFlagsCache || {});
+}
 
 /** Soft-read shared skip/flag statuses (local-only when RPC unavailable). */
 async function loadRemoteSystemFlags() {
@@ -525,7 +591,7 @@ async function loadRemoteSystemFlags() {
 export async function listSystems() {
   if (systemsCatalogCache) {
     const flags = await loadRemoteSystemFlags();
-    return applySystemStatuses(structuredClone(systemsCatalogCache), flags);
+    return applySystemStatuses(cloneSystemsFc(systemsCatalogCache), flags);
   }
   if (!systemsCatalogPromise) {
     systemsCatalogPromise = (async () => {
@@ -540,7 +606,7 @@ export async function listSystems() {
     });
   }
   const [data, flags] = await Promise.all([systemsCatalogPromise, loadRemoteSystemFlags()]);
-  return applySystemStatuses(structuredClone(data), flags);
+  return applySystemStatuses(cloneSystemsFc(data), flags);
 }
 
 function applySystemStatuses(data, remoteFlags = {}) {
@@ -730,12 +796,17 @@ export async function patchSystemStatus(systemId, payload) {
     }
   }
 
+  notifySystemsChanged({ systemId: id, status: next.status || next.fence_status || '' });
+
   return { id, ...next };
 }
 
-export async function listAnnotations(bounds = WORLD_BOUNDS) {
+async function listAnnotationsInner(bounds = WORLD_BOUNDS) {
   migrateLocalAnnotationCache();
-  const local = decorateLocal(readJson(ANN_KEY, emptyFc()).features || [], localDecisionMap());
+  const local = decorateLocal(
+    filterLocalForBounds(readJson(ANN_KEY, emptyFc()).features || [], bounds),
+    localDecisionMap(),
+  );
   const localFc = { type: 'FeatureCollection', features: local };
   const sb = getSupabase();
   if (sb) {
@@ -782,29 +853,31 @@ export async function listAnnotations(bounds = WORLD_BOUNDS) {
   return applyLocalReviewMemory(localFc);
 }
 
-/** Count fences authored by the current user (local + soft remote sample). */
+export async function listAnnotations(bounds = WORLD_BOUNDS) {
+  const key = boundsCacheKey(bounds);
+  const inflight = annotationsInflight.get(key);
+  if (inflight) return inflight;
+  const promise = listAnnotationsInner(bounds).finally(() => {
+    if (annotationsInflight.get(key) === promise) annotationsInflight.delete(key);
+  });
+  annotationsInflight.set(key, promise);
+  return promise;
+}
+
+/** Count fences authored by the current user (device-local; avoids world fetch). */
 export async function countMyAnnotations() {
-  const mine = authorLabel();
-  const guest = GUEST_AUTHOR_LABEL;
+  const meLabel = authorLabel();
+  const username = currentUsernameOrOmit();
+  const owned = readOwnedIds();
   const local = readJson(ANN_KEY, emptyFc());
-  const localCount = (local.features || []).filter((f) => {
-    const a = f?.properties?.author_label;
-    return a === mine || (!mine && a === guest);
+  return (local.features || []).filter((feature) => {
+    const props = feature?.properties || {};
+    const id = featureId(feature);
+    if (id && owned.has(id)) return true;
+    if (props.is_own === true || props.is_own === 'true') return true;
+    return annotationAuthoredByMe(props, meLabel)
+      || (username && displayAuthorName(props.author_label) === displayAuthorName(username));
   }).length;
-
-  const sb = getSupabase();
-  if (!sb) return localCount;
-
-  try {
-    const remote = await listAnnotations(WORLD_BOUNDS);
-    const remoteMine = (remote.features || []).filter((f) => {
-      const a = f?.properties?.author_label;
-      return a && (a === mine || a === currentUsernameOrOmit());
-    }).length;
-    return Math.max(localCount, remoteMine);
-  } catch (_) {
-    return localCount;
-  }
 }
 
 function upsertLocalAnnotation(feature) {
@@ -1005,9 +1078,7 @@ async function flushPendingAnnotationsOnce() {
     });
     uploaded = 1;
     await sleep(400);
-    try {
-      window.dispatchEvent(new CustomEvent('zaun:annotations-changed'));
-    } catch (_) {}
+    notifyAnnotationsChanged();
   } catch (err) {
     try {
       const props = item.properties || (item.properties = {});
@@ -1021,7 +1092,7 @@ async function flushPendingAnnotationsOnce() {
   return { uploaded, remaining: countPendingAnnotations() };
 }
 
-export async function saveAnnotation(payload) {
+async function saveAnnotationInner(payload) {
   await ensureAuthSession();
   const geometry = publicGeometry(payload.geometry);
   const existingId = String(payload.id || payload.properties?.fence_id || '');
@@ -1103,6 +1174,12 @@ export async function saveAnnotation(payload) {
   return decorateLocal([feature], localDecisionMap())[0];
 }
 
+export async function saveAnnotation(payload) {
+  const feature = await saveAnnotationInner(payload);
+  if (feature) notifyAnnotationsChanged({ feature });
+  return feature;
+}
+
 export async function deleteAnnotation(annotationId) {
   await ensureAuthSession();
   if (getSupabase()) {
@@ -1147,11 +1224,7 @@ export async function verifyAnnotation(annotationId, decision, revisionId, comme
           /* comment is best-effort; decision already saved */
         }
       }
-      try {
-        return await listAnnotations();
-      } catch (_) {
-        return applyLocalReviewMemory(readJson(ANN_KEY, emptyFc()));
-      }
+      return applyLocalReviewMemory(readJson(ANN_KEY, emptyFc()));
     });
   }
   rememberReviewedId(annotationId, decision);
@@ -1162,7 +1235,7 @@ export async function verifyAnnotation(annotationId, decision, revisionId, comme
     if (hit) hit.comment = note;
     writeJson(VOTE_KEY, rows);
   }
-  return listAnnotations();
+  return applyLocalReviewMemory(readJson(ANN_KEY, emptyFc()));
 }
 
 /** @deprecated use verifyAnnotation */
