@@ -110,20 +110,20 @@ export function WelcomeBack({
               <Skeleton className="mx-auto h-10 w-16" label="Loading annotations" />
             )}
             <p className="mt-1 font-mono text-[10px] uppercase tracking-widest text-muted-foreground">
-              new fences
+              board points
             </p>
           </div>
         </div>
 
         <div className="text-center">
-          <h2 className="text-2xl font-semibold leading-tight">Welcome back</h2>
+          <h2 className="text-2xl font-semibold leading-tight">Welcome to fency</h2>
           <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
             {ready && people != null && annotations != null && pct != null ? (
               <>
-                While you were gone{" "}
-                <span className="font-semibold text-foreground">{people} people</span> added{" "}
-                <span className="font-semibold text-foreground">{annotations} annotations</span> —{" "}
-                {pct}% of this week's community goal.
+                Right now the board shows{" "}
+                <span className="font-semibold text-foreground">{people} contributors</span> and{" "}
+                <span className="font-semibold text-foreground">{annotations} points</span>
+                {" "}toward a {goal}-point community goal ({pct}%).
               </>
             ) : (
               <span className="inline-flex flex-col items-center gap-2">

@@ -95,7 +95,7 @@ export function MoreStatus({
           )}
           {datasetPct != null && chipsReviewed != null ? (
             <p className="mt-1 text-xs text-muted-foreground">
-              {datasetPct}% of the dataset · {chipsReviewed} chips reviewed
+              {datasetPct}% of the dataset · {chipsReviewed} you reviewed
             </p>
           ) : (
             <Skeleton className="mt-1 h-3 w-36" />
@@ -104,7 +104,7 @@ export function MoreStatus({
             <Tag>You: {saved} fences</Tag>
             {weeklyNow != null ? (
               <Tag>
-                Week: {weeklyNow}/{weeklyGoal}
+                Board: {weeklyNow} pts
               </Tag>
             ) : (
               <Skeleton className="h-5 w-20 rounded-full" />

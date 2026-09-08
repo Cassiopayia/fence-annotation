@@ -85,8 +85,6 @@ export const SYSTEMS: Sys[] = [
 
 type Props = {
   focus?: boolean;
-  aoi?: boolean;
-  fence?: boolean;
   reveal?: boolean;
   pv?: boolean;
   selected?: string;
@@ -108,8 +106,6 @@ type Props = {
  */
 export function MapCanvas({
   focus = false,
-  aoi = false,
-  fence = false,
   reveal = false,
   pv = true,
   selected,
@@ -369,9 +365,6 @@ export function MapCanvas({
       window.clearInterval(t);
     };
   }, [drawing]);
-
-  void aoi;
-  void fence;
 
   return (
     <div

@@ -142,11 +142,11 @@ export function Overview({
             <Trophy className="size-5" />
           </div>
           <p className="mt-2 font-mono text-[10px] uppercase tracking-wide text-muted-foreground">
-            weekly goal
+            leaderboard points
           </p>
           {weeklyPct != null && weeklyNow != null ? (
             <p className="text-sm font-semibold">
-              {weeklyPct}% · {weeklyNow} / {weeklyGoal}
+              {weeklyNow} pts · goal {weeklyGoal}
             </p>
           ) : (
             <Skeleton className="mx-auto mt-1 h-5 w-24" />
@@ -158,7 +158,7 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <Users className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Contributors this week</span>
+            <span className="text-sm font-medium">Contributors on board</span>
           </div>
           {people != null && !loading ? (
             <span className="font-mono text-sm font-semibold">{people}</span>
@@ -169,7 +169,7 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <ShieldCheck className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Chips reviewed</span>
+            <span className="text-sm font-medium">Your reviews</span>
           </div>
           {chipsReviewed != null && !loading ? (
             <span className="font-mono text-sm font-semibold">{chipsReviewed}</span>
@@ -180,7 +180,7 @@ export function Overview({
         <div className="flex items-center justify-between rounded-2xl bg-secondary px-4 py-3">
           <div className="flex items-center gap-3">
             <Flag className="size-5 text-muted-foreground" />
-            <span className="text-sm font-medium">Open flags</span>
+            <span className="text-sm font-medium">Flagged / needs changes</span>
           </div>
           {flags != null && !loading ? (
             <StatusPill tone={flags > 0 ? "warn" : "neutral"}>{flags}</StatusPill>

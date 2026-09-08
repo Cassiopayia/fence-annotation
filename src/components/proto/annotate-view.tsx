@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Check, Crosshair, Eye, EyeOff, Frame, Maximize2, Undo2, Plus, X } from "lucide-react";
+import { Check, Crosshair, Eye, EyeOff, Maximize2, Undo2, Plus, X } from "lucide-react";
 import { getDrawnGeometry } from "./map-canvas";
 import { CyclePill, HudButton, InfoPill } from "./primitives";
 import { cn } from "@/lib/utils";
@@ -71,7 +71,6 @@ export function AnnotateView({
   const [visibility, setVisibility] = useState(VISIBILITY[0]!);
   const [drawn, setDrawn] = useState(false);
   const [closed, setClosed] = useState(false);
-  const [aoi, setAoi] = useState(true);
   const [reasonOpen, setReasonOpen] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [hint, setHint] = useState(true);
@@ -229,9 +228,6 @@ export function AnnotateView({
         <div className="absolute right-4 top-[calc(max(6px,env(safe-area-inset-top))+56px)] z-30 flex flex-col items-end gap-2">
           <HudButton id="annotate-recenter" label="Recenter on this system" onClick={onRecenter}>
             <Crosshair className="size-5" />
-          </HudButton>
-          <HudButton id="annotate-chipframe" label="Export chip frame" active={aoi} onClick={() => setAoi(!aoi)}>
-            <Frame className="size-5" />
           </HudButton>
           <HudButton
             id="annotate-undo"

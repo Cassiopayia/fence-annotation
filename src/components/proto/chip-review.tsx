@@ -640,14 +640,14 @@ export function ChipReview({ onExit }: { onExit: () => void }) {
         <button
           type="button"
           onClick={() => setFlagMode((m) => (m + 1) % (FLAGS.length + 1))}
-          aria-label={`${FLAGS.length} flag reasons. Tap to cycle.`}
+          aria-label="Flag tip. Tap to cycle reasons."
           className="glass flex max-w-[46%] shrink-0 items-center gap-1.5 rounded-full border border-border px-3 py-2 shadow-hud tap-44"
         >
           <AlertCircle className="size-4 shrink-0" />
           {flagMode === 0 ? (
             <span className="font-mono text-[11px] font-semibold">
-              {FLAGS.length}
-              <span className="ml-1 text-muted-foreground">flags</span>
+              Flag
+              <span className="ml-1 text-muted-foreground">tips</span>
             </span>
           ) : (
             <span className="truncate font-mono text-[11px] font-semibold whitespace-nowrap">

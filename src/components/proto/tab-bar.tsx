@@ -1,4 +1,4 @@
-import { Map, PenLine, LayoutGrid, ShieldCheck } from "lucide-react";
+import { Map, PenLine, LayoutGrid } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export type Tab = "map" | "annotate" | "more";
@@ -14,34 +14,25 @@ const TABS: { id: Tab; label: string; Icon: typeof Map }[] = [
  * way back is the small exit-solo control that floats on the map.
  * Tapping the active tab toggles its surface closed.
  *
- * After the review unlock threshold, the middle tab becomes Review.
+ * Review lives under More once unlocked — the middle tab stays Annotate.
  */
 export function TabBar({
   value,
   onChange,
   badge,
-  reviewReady = false,
 }: {
   value: Tab;
   onChange: (t: Tab) => void;
   /** red notification bubble on the More tab (e.g. install / onboarding) */
   badge?: number;
-  /** saved ≥ unlock → middle tab is Review instead of Annotate */
-  reviewReady?: boolean;
 }) {
-  const tabs = TABS.map((t) =>
-    t.id === "annotate" && reviewReady
-      ? { ...t, label: "Review", Icon: ShieldCheck }
-      : t,
-  );
-
   return (
     <nav
       id="mobile-tab-bar"
       className="absolute inset-x-0 bottom-0 z-40 border-t border-border bg-card pb-[env(safe-area-inset-bottom,0px)]"
     >
       <ul className="grid grid-cols-3">
-        {tabs.map(({ id, label, Icon }) => {
+        {TABS.map(({ id, label, Icon }) => {
           const active = value === id;
           return (
             <li key={id}>

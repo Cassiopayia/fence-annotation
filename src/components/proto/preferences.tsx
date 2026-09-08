@@ -6,9 +6,9 @@ export type Lang = "en" | "de";
 export type Theme = "light" | "dark" | "system";
 export type Scheme = "field" | "midnight" | "coral" | "harvest" | "voltage";
 
-export const LANGS: { id: Lang; label: string; meta: string }[] = [
+export const LANGS: { id: Lang; label: string; meta: string; disabled?: boolean }[] = [
   { id: "en", label: "English", meta: "EN" },
-  { id: "de", label: "Deutsch", meta: "DE" },
+  { id: "de", label: "Deutsch (soon)", meta: "DE", disabled: true },
 ];
 
 export const THEMES: { id: Theme; label: string; Icon: typeof Sun }[] = [
@@ -56,7 +56,7 @@ function Segment<T extends string>({
   ariaLabel,
 }: {
   value: T;
-  options: { id: T; label: string; Icon?: typeof Sun }[];
+  options: { id: T; label: string; Icon?: typeof Sun; disabled?: boolean }[];
   onChange: (v: T) => void;
   ariaLabel: string;
 }) {
@@ -74,12 +74,17 @@ function Segment<T extends string>({
             type="button"
             role="radio"
             aria-checked={active}
-            onClick={() => onChange(o.id)}
+            disabled={o.disabled}
+            title={o.disabled ? "Not available yet" : undefined}
+            onClick={() => {
+              if (!o.disabled) onChange(o.id);
+            }}
             className={cn(
               "flex h-9 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-full px-3 text-[13px] font-semibold transition-colors",
               active
                 ? "bg-card text-foreground shadow-hud"
                 : "text-muted-foreground",
+              o.disabled && "cursor-not-allowed opacity-45",
             )}
           >
             {o.Icon && <o.Icon className="size-4" />}
@@ -133,11 +138,12 @@ export function Preferences({
           </p>
         )}
         <Segment
-          value={lang}
-          options={LANGS.map((l) => ({ id: l.id, label: l.label }))}
+          value={lang === "de" ? "en" : lang}
+          options={LANGS.map((l) => ({ id: l.id, label: l.label, disabled: l.disabled }))}
           onChange={onLang}
           ariaLabel="Language"
         />
+        <p className="text-[11px] text-muted-foreground">UI is English for now. Deutsch is not wired yet.</p>
       </div>
       <div className="space-y-2">
         {!compact && (
