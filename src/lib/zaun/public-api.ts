@@ -449,6 +449,8 @@ let systemsCatalogPromise = null;
 let systemsCatalogCache = null;
 let remoteSystemFlagsPromise = null;
 let remoteSystemFlagsCache = null;
+/** Serialize concurrent flush calls (connection-status also guards its hook). */
+let flushPendingPromise = null;
 
 /** Soft-read shared skip/flag statuses (local-only when RPC unavailable). */
 async function loadRemoteSystemFlags() {
@@ -885,6 +887,14 @@ function sleep(ms) {
  * backlog gradually. Cache survives reload; only the uploaded row is replaced.
  */
 export async function flushPendingAnnotations() {
+  if (flushPendingPromise) return flushPendingPromise;
+  flushPendingPromise = flushPendingAnnotationsOnce().finally(() => {
+    flushPendingPromise = null;
+  });
+  return flushPendingPromise;
+}
+
+async function flushPendingAnnotationsOnce() {
   const sb = getSupabase();
   if (!sb || !supabaseConfigured()) {
     return { uploaded: 0, remaining: countPendingAnnotations() };

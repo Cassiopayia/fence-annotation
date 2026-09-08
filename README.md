@@ -45,6 +45,10 @@ Optional repository secrets (for shared annotations):
 
 Without Supabase secrets the app still works; saves stay in the browser.
 
+## Supabase RPCs
+
+SQL migrations live in [`supabase/migrations/`](supabase/migrations/). Write RPCs (`create_annotation`, `propose_annotation_edit`) validate GeoJSON server-side (`ST_IsValid`, allowed geometry types, `area_id` format) and enforce rate limits in the remote project.
+
 ## Data
 
 PV footprints ship as `public/data/pv_systems.geojson` (ground-mounted / freifläche subset of Manske UFZ **Solar_Energy_Polygons V20260203**, derived from MaStR / BNetzA). Full credit, DOI, and license notes: [ATTRIBUTION.md](./ATTRIBUTION.md#geospatial-data).

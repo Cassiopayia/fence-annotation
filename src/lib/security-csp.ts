@@ -1,0 +1,15 @@
+/** Content-Security-Policy for the static map PWA (tiles/WMS need broad https:). */
+export const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "object-src 'none'",
+  "form-action 'self' mailto:",
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com https://demotiles.maplibre.org data:",
+  "img-src 'self' data: blob: https:",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://challenges.cloudflare.com https:",
+  "worker-src 'self' blob:",
+  "child-src blob:",
+  "frame-src https://challenges.cloudflare.com",
+].join("; ");

@@ -11,6 +11,7 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { CONTENT_SECURITY_POLICY } from "../lib/security-csp";
 
 function NotFoundComponent() {
   return (
@@ -94,6 +95,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:description", content: "Annotate photovoltaic fence lines on aerial imagery." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      {
+        httpEquiv: "Content-Security-Policy",
+        content: CONTENT_SECURITY_POLICY,
+      },
     ],
     links: [
       {

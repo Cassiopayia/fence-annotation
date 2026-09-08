@@ -6,6 +6,13 @@ import { DrawModule } from './draw';
 import { ensureMapOverlayStack } from './imagery-layers';
 import { assetUrl } from './wms-client';
 
+/** Escape text before interpolating into MapLibre popup HTML. */
+function escapePopupText(value) {
+  const el = document.createElement('div');
+  el.textContent = String(value ?? '');
+  return el.innerHTML;
+}
+
 export function initMapLayers(map, draw) {
   let distractionOverlayId = null;
   let hoveredAnnotationId = null;
@@ -327,7 +334,7 @@ export function initMapLayers(map, draw) {
       const areaText = Number.isFinite(ha) ? `${ha.toFixed(3)} ha` : 'area n/a';
       systemsPopup
         .setLngLat(event.lngLat)
-        .setHTML(`<strong>PV #${id}</strong><div>${areaText}</div>`)
+        .setHTML(`<strong>PV #${escapePopupText(id)}</strong><div>${escapePopupText(areaText)}</div>`)
         .addTo(map);
     });
     map.on('mouseenter','systems-fill', () => {
